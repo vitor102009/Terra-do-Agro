@@ -1,0 +1,19 @@
+{% extends "admin/_base.html" %}
+{% block title %}Configurações · Administração{% endblock %}
+{% block admin %}
+<div class="row g-3">
+  <div class="col-lg-6"><div class="card"><div class="card-header"><h2>Configurações da plataforma</h2></div><div class="card-body">
+    <form method="post">{{ m.csrf() }}
+      {% for chave, rot in configs.items() %}
+      <label class="form-label" for="{{ chave }}">{{ rot }}</label>
+      <textarea class="form-control mb-3" id="{{ chave }}" name="{{ chave }}" rows="2">{{ valores.get(chave, '') }}</textarea>
+      {% endfor %}
+      <button class="btn btn-primary" type="submit">Salvar</button>
+    </form>
+  </div></div></div>
+  <div class="col-lg-6"><div class="card"><div class="card-header"><h2>Ambiente</h2></div>
+    <ul class="list-group list-group-flush">{% for k, val in ambiente.items() %}<li class="list-group-item d-flex justify-content-between gap-3 small"><span>{{ k }}</span><span class="text-end text-muted">{{ val }}</span></li>{% endfor %}</ul>
+    <div class="card-body small text-muted">Credenciais (chave secreta, SMTP) são definidas apenas no arquivo <code>.env</code> do servidor e não podem ser alteradas por esta tela.</div>
+  </div></div>
+</div>
+{% endblock %}

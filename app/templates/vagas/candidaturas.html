@@ -1,0 +1,14 @@
+{% extends "layouts/app.html" %}
+{% block title %}Minhas candidaturas{% endblock %}
+{% block content %}
+{{ m.page_head('Minhas candidaturas') }}
+{% include "vagas/_nav.html" %}
+<div class="card">
+  {% if cands %}<ul class="list-group list-group-flush">{% for c in cands %}
+    <li class="list-group-item d-flex flex-wrap justify-content-between gap-2 align-items-center">
+      <div><a class="fw-semibold" href="{{ url_for('vagas.detalhe', vid=c.vaga.id) }}">{{ c.vaga.cargo }}</a><div class="small text-muted">{{ c.vaga.empregador }} · {{ c.vaga.municipio }}/{{ c.vaga.uf }} · enviada {{ c.created_at|data_br }}</div></div>
+      <div class="d-flex gap-2 align-items-center">{{ m.situacao_badge(c.status, c.status_label) }}<a class="btn btn-sm btn-outline-primary" href="{{ url_for('chat.iniciar', user_id=c.vaga.user_id, vaga=c.vaga.id) }}">Conversar</a></div>
+    </li>{% endfor %}</ul>
+  {% else %}{{ m.empty('bi-send', 'Nenhuma candidatura enviada', 'Encontre oportunidades em Vagas abertas.', url_for('vagas.index'), 'Ver vagas') }}{% endif %}
+</div>
+{% endblock %}

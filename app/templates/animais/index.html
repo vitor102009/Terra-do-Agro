@@ -1,0 +1,68 @@
+{% extends "layouts/app.html" %}
+{% block title %}Rebanho{% endblock %}
+{% block content %}
+{% call m.page_head('Rebanho', propriedade_atual.nome) %}
+  <a class="btn btn-outline-primary" href="{{ url_for('animais.exportar', **args.to_dict()) }}"><i class="bi bi-download" aria-hidden="true"></i>Exportar CSV</a>
+  <a class="btn btn-outline-primary" href="{{ url_for('animais.categorias') }}"><i class="bi bi-list-ul" aria-hidden="true"></i>Categorias</a>
+  {% if pode('editar') %}<a class="btn btn-primary" href="{{ url_for('animais.novo') }}"><i class="bi bi-plus-lg" aria-hidden="true"></i>Novo animal</a>{% endif %}
+{% endcall %}
+
+<form class="filters" method="get" role="search" aria-label="Filtrar animais">
+  <div class="row g-2 align-items-end">
+    <div class="col-12 col-md-3"><label class="form-label" for="q">Brinco ou nome</label><input class="form-control" id="q" name="q" value="{{ args.get('q', '') }}" placeholder="Ex.: 1023"></div>
+    <div class="col-6 col-md-2"><label class="form-label" for="lote">Lote</label>
+      <select class="form-select" id="lote" name="lote"><option value="">Todos</option><option value="sem" {% if args.get('lote') == 'sem' %}selected{% endif %}>Sem lote</option>
+        {% for l in lotes %}<option value="{{ l.id }}" {% if args.get('lote') == l.id|string %}selected{% endif %}>{{ l.nome }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-2"><label class="form-label" for="sexo">Sexo</label>
+      <select class="form-select" id="sexo" name="sexo"><option value="">Todos</option>{% for k, r in sexos.items() %}<option value="{{ k }}" {% if args.get('sexo') == k %}selected{% endif %}>{{ r }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-2"><label class="form-label" for="raca">Raça</label><input class="form-control" id="raca" name="raca" value="{{ args.get('raca', '') }}"></div>
+    <div class="col-6 col-md-3"><label class="form-label" for="categoria">Categoria</label>
+      <select class="form-select" id="categoria" name="categoria"><option value="">Todas</option>{% for c in categorias %}<option {% if args.get('categoria') == c %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-3"><label class="form-label" for="reprodutiva">Situação reprodutiva</label>
+      <select class="form-select" id="reprodutiva" name="reprodutiva"><option value="">Todas</option>{% for k, r in reprodutivas.items() %}<option value="{{ k }}" {% if args.get('reprodutiva') == k %}selected{% endif %}>{{ r }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-3"><label class="form-label" for="sanitaria">Situação sanitária</label>
+      <select class="form-select" id="sanitaria" name="sanitaria"><option value="">Todas</option>{% for k, r in sanitarias.items() %}<option value="{{ k }}" {% if args.get('sanitaria') == k %}selected{% endif %}>{{ r }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-2"><label class="form-label" for="status">Status</label>
+      <select class="form-select" id="status" name="status">{% for k, r in status_opcoes.items() %}<option value="{{ k }}" {% if args.get('status', 'ativo') == k %}selected{% endif %}>{{ r }}</option>{% endfor %}<option value="todos" {% if args.get('status') == 'todos' %}selected{% endif %}>Todos</option></select></div>
+    <div class="col-6 col-md-2"><label class="form-label" for="ordem">Ordenar</label>
+      <select class="form-select" id="ordem" name="ordem">{% for k, r in {'brinco': 'Brinco', 'entrada': 'Entrada mais recente', 'peso': 'Maior peso', 'nascimento': 'Mais velhos'}.items() %}<option value="{{ k }}" {% if args.get('ordem') == k %}selected{% endif %}>{{ r }}</option>{% endfor %}</select></div>
+    <div class="col-12 col-md-2 d-flex gap-2"><button class="btn btn-primary flex-fill" type="submit">Filtrar</button><a class="btn btn-outline-secondary" href="{{ url_for('animais.index') }}" aria-label="Limpar filtros"><i class="bi bi-x-lg" aria-hidden="true"></i></a></div>
+  </div>
+</form>
+
+<div class="card">
+  {% if pag.items %}
+  <div class="table-responsive">
+    <table class="table table-hover align-middle table-responsive-cards">
+      <thead><tr><th>Brinco</th><th>Espécie / raça</th><th>Sexo</th><th>Idade</th><th>Categoria</th><th>Lote</th><th>Situação</th><th class="num">Peso atual</th><th></th></tr></thead>
+      <tbody>
+      {% for a in pag.items %}
+        <tr>
+          <td data-label="Brinco"><a class="fw-bold" href="{{ url_for('animais.ficha', aid=a.id) }}">{{ a.identificacao }}</a>{% if a.nome and a.brinco %}<small class="d-block text-muted">{{ a.nome }}</small>{% endif %}</td>
+          <td data-label="Espécie / raça">{{ especies.get(a.especie) }}{% if a.raca %} · {{ a.raca }}{% endif %}</td>
+          <td data-label="Sexo">{{ sexos.get(a.sexo) }}</td>
+          <td data-label="Idade">{{ a.data_nascimento|idade }}{% if a.nascimento_estimado %} <small class="text-muted">(est.)</small>{% endif %}</td>
+          <td data-label="Categoria">{{ a.categoria or '—' }}</td>
+          <td data-label="Lote">{{ a.lote.nome if a.lote else '—' }}</td>
+          <td data-label="Situação">
+            {% if a.status != 'ativo' %}{{ m.situacao_badge(a.status, status_opcoes.get(a.status)) }}
+            {% elif a.situacao_reprodutiva != 'nao_aplicavel' %}<span class="badge badge-soft-gold">{{ reprodutivas.get(a.situacao_reprodutiva) }}</span>{% endif %}
+            {% if a.situacao_sanitaria != 'saudavel' %}<span class="badge badge-soft-red">{{ sanitarias.get(a.situacao_sanitaria) }}</span>{% endif %}
+          </td>
+          <td class="num" data-label="Peso atual">{% if a.peso_atual is not none %}{{ a.peso_atual|numero(1) }} kg<small class="d-block text-muted">{{ a.data_peso_atual|data_br }}</small>{% else %}—{% endif %}</td>
+          <td class="text-end" data-label=""><a class="btn btn-sm btn-outline-primary" href="{{ url_for('animais.ficha', aid=a.id) }}">Ficha</a></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    {% if args.get('q') or args.get('lote') or args.get('sexo') or args.get('raca') or args.get('categoria') or args.get('reprodutiva') or args.get('sanitaria') %}
+      {{ m.empty('bi-search', 'Nenhum animal encontrado com estes filtros') }}
+    {% else %}
+      {{ m.empty('bi-tags', 'Nenhum animal cadastrado', 'Cadastre os animais pela identificação do brinco. O nome é opcional.', url_for('animais.novo') if pode('editar') else None, 'Cadastrar animal') }}
+    {% endif %}
+  {% endif %}
+</div>
+{{ m.pagination(pag, 'animais.index') }}
+{% endblock %}

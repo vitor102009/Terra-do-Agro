@@ -1,0 +1,32 @@
+{% extends "admin/_base.html" %}
+{% block title %}Administração{% endblock %}
+{% block admin %}
+<h1 class="h4 mb-3">Painel administrativo</h1>
+<div class="row g-3 mb-3">
+  {% for icon, label, val, link, cls in [
+    ('bi-people', 'Usuários', ind.usuarios ~ ' (+' ~ ind.usuarios_7d ~ ' em 7 dias)', url_for('admin.usuarios'), ''),
+    ('bi-flag', 'Denúncias abertas', ind.denuncias, url_for('admin.denuncias'), 'kpi-danger' if ind.denuncias else ''),
+    ('bi-patch-check', 'Verificações pendentes', ind.verificacoes, url_for('admin.verificacoes'), 'kpi-gold' if ind.verificacoes else ''),
+    ('bi-life-preserver', 'Chamados abertos', ind.chamados, url_for('admin.suporte'), 'kpi-gold' if ind.chamados else ''),
+    ('bi-house-door', 'Propriedades ativas', ind.propriedades, url_for('admin.propriedades'), ''),
+    ('bi-tags', 'Animais ativos', ind.animais, None, ''),
+    ('bi-shop', 'Anúncios ativos', ind.anuncios, url_for('admin.anuncios'), ''),
+    ('bi-briefcase', 'Vagas abertas', ind.vagas, url_for('admin.conteudos', aba='vagas'), ''),
+    ('bi-person-badge', 'Perfis profissionais', ind.perfis, url_for('admin.perfis'), ''),
+    ('bi-newspaper', 'Publicações (7 dias)', ind.posts_7d, url_for('admin.conteudos'), ''),
+    ('bi-chat-dots', 'Mensagens (7 dias)', ind.mensagens_7d, None, ''),
+    ('bi-person-x', 'Contas suspensas', ind.suspensos, url_for('admin.usuarios', situacao='suspensos'), ''),
+  ] %}
+  <div class="col-6 col-md-4 col-xl-3"><div class="card kpi {{ cls }}"><div class="label"><i class="bi {{ icon }}" aria-hidden="true"></i>{{ label }}</div><div class="value fs-4">{{ val }}</div>{% if link %}<a class="stretched-link" href="{{ link }}" aria-label="{{ label }}"></a>{% endif %}</div></div>
+  {% endfor %}
+</div>
+<div class="row g-3">
+  <div class="col-lg-4"><div class="card"><div class="card-header"><h2>Usuários por perfil</h2></div>
+    <ul class="list-group list-group-flush">{% for k, r in papeis.items() %}<li class="list-group-item d-flex justify-content-between"><span>{{ r }}</span><strong>{{ por_papel.get(k, 0) }}</strong></li>{% endfor %}</ul>
+  </div></div>
+  <div class="col-lg-8"><div class="card"><div class="card-header"><h2>Ações administrativas recentes</h2><a class="small" href="{{ url_for('admin.auditoria') }}">Auditoria completa</a></div>
+    {% if acoes %}<ul class="list-group list-group-flush">{% for a in acoes %}<li class="list-group-item small"><span class="text-muted">{{ a.created_at|datahora_br }} · {{ a.user.nome if a.user else 'Sistema' }}</span><div>{{ a.descricao }}</div></li>{% endfor %}</ul>
+    {% else %}<div class="card-body small text-muted">Nenhuma ação registrada.</div>{% endif %}
+  </div></div>
+</div>
+{% endblock %}

@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+
+{% macro nav(endpoint, icon, label, bps=(), badge=None) %}
+{% set ativo = request.endpoint == endpoint or request.blueprint in bps %}
+<a class="sidebar-link{% if ativo %} active{% endif %}" href="{{ url_for(endpoint) }}" {% if ativo %}aria-current="page"{% endif %}>
+  <i class="bi {{ icon }}" aria-hidden="true"></i><span>{{ label }}</span>
+  {% if badge %}<span class="badge text-bg-warning">{{ badge }}</span>{% endif %}
+</a>
+{% endmacro %}
+
+{% block body %}
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar" aria-label="Menu principal">
+    <div class="sidebar-head d-flex align-items-center justify-content-between">
+      <a class="brand" href="{{ url_for('main.dashboard') }}">
+        <img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="40" height="40">
+        <span><span class="brand-name d-block">TERRA <span>DO</span> AGRO</span><span class="brand-slogan d-block">A revolução digital do agro brasileiro</span></span>
+      </a>
+      <button class="btn btn-icon btn-light-ghost d-lg-none" type="button" data-sidebar-close aria-label="Fechar menu"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section">Gestão rural</div>
+      {{ nav('main.dashboard', 'bi-speedometer2', 'Painel') }}
+      {{ nav('propriedades.index', 'bi-house-door', 'Propriedades', ('propriedades',)) }}
+      {{ nav('animais.index', 'bi-tags', 'Rebanho', ('animais',)) }}
+      {{ nav('lotes.index', 'bi-diagram-3', 'Lotes e pastagens', ('lotes',)) }}
+      {{ nav('pesagens.index', 'bi-speedometer', 'Pesagens', ('pesagens',)) }}
+      {{ nav('saude.index', 'bi-shield-plus', 'Sanidade e vacinas', ('saude',)) }}
+      {{ nav('reproducao.index', 'bi-gender-female', 'Reprodução', ('reproducao',)) }}
+      {{ nav('insumos.index', 'bi-box-seam', 'Insumos e estoque', ('insumos',)) }}
+      {% if pode('financeiro') %}{{ nav('financeiro.index', 'bi-cash-coin', 'Financeiro', ('financeiro',)) }}{% endif %}
+      {{ nav('relatorios.index', 'bi-file-earmark-bar-graph', 'Relatórios', ('relatorios',)) }}
+      {{ nav('notificacoes.agenda', 'bi-calendar-check', 'Agenda e tarefas') }}
+
+      <div class="sidebar-section">Conexões do agro</div>
+      {{ nav('marketplace.index', 'bi-shop', 'Marketplace', ('marketplace',)) }}
+      {{ nav('profissionais.index', 'bi-person-badge', 'Profissionais do Agro', ('profissionais',)) }}
+      {{ nav('servicos.index', 'bi-clipboard-check', 'Serviços contratados', ('servicos',)) }}
+      {{ nav('vagas.index', 'bi-briefcase', 'Vagas no campo', ('vagas',)) }}
+      {{ nav('chat.index', 'bi-chat-dots', 'Mensagens', ('chat',), msg_nao_lidas or None) }}
+      {{ nav('comunidade.index', 'bi-people', 'Grupos', ('comunidade',)) }}
+      {{ nav('feed.index', 'bi-newspaper', 'Feed rural', ('feed',)) }}
+
+      <div class="sidebar-section">Informações</div>
+      {{ nav('clima.clima', 'bi-cloud-sun', 'Clima') }}
+      {{ nav('clima.cotacoes', 'bi-graph-up-arrow', 'Cotações') }}
+      {{ nav('notificacoes.index', 'bi-bell', 'Notificações', (), notif_nao_lidas or None) }}
+      {{ nav('main.pwa_app_offline', 'bi-cloud-arrow-down', 'Modo offline') }}
+      {% if current_user.is_admin %}
+      <div class="sidebar-section">Administração</div>
+      {{ nav('admin.index', 'bi-shield-lock', 'Painel administrativo', ('admin',)) }}
+      {% endif %}
+    </nav>
+    <div class="sidebar-foot">
+      <a class="text-reset" href="{{ url_for('conta.suporte') }}"><i class="bi bi-life-preserver me-1" aria-hidden="true"></i>Suporte</a>
+      <span class="mx-1">·</span>
+      <a class="text-reset" href="{{ url_for('main.privacidade') }}">Privacidade</a>
+    </div>
+  </aside>
+  <div class="sidebar-backdrop" data-sidebar-close></div>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="topbar-btn d-lg-none" type="button" data-sidebar-open aria-label="Abrir menu" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
+      {% if minhas_propriedades %}
+      <div class="dropdown">
+        <button class="prop-switch dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Trocar propriedade ativa">
+          <i class="bi bi-geo-alt text-gold" aria-hidden="true"></i>
+          <span class="nome">{{ propriedade_atual.nome }}</span>
+        </button>
+        <ul class="dropdown-menu shadow-sm">
+          <li><h6 class="dropdown-header">Propriedade ativa</h6></li>
+          {% for mb in minhas_propriedades %}
+          <li>
+            <form method="post" action="{{ url_for('propriedades.ativar', pid=mb.propriedade_id) }}">
+              {{ m.csrf() }}<input type="hidden" name="next" value="{{ request.path }}">
+              <button class="dropdown-item d-flex justify-content-between gap-3" type="submit">
+                <span>{{ mb.propriedade.nome }}<small class="d-block text-muted">{{ mb.propriedade.municipio }}/{{ mb.propriedade.uf }} · {{ mb.papel_label }}</small></span>
+                {% if propriedade_atual and mb.propriedade_id == propriedade_atual.id %}<i class="bi bi-check2 text-success" aria-hidden="true"></i>{% endif %}
+              </button>
+            </form>
+          </li>
+          {% endfor %}
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item" href="{{ url_for('propriedades.nova') }}"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Nova propriedade</a></li>
+        </ul>
+      </div>
+      {% endif %}
+      <form class="search d-none d-md-block" action="{{ url_for('main.busca') }}" method="get" role="search">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <label class="visually-hidden" for="busca-global">Buscar</label>
+        <input class="form-control" id="busca-global" type="search" name="q" placeholder="Buscar brinco, anúncio, profissional ou vaga" value="{{ request.args.get('q', '') if request.endpoint == 'main.busca' else '' }}">
+      </form>
+      <div class="topbar-actions">
+        <span class="conn-pill" id="conn-pill" role="status" aria-live="polite"></span>
+        <a class="topbar-btn d-md-none" href="{{ url_for('main.busca') }}" aria-label="Buscar"><i class="bi bi-search" aria-hidden="true"></i></a>
+        <a class="topbar-btn hide-mobile" href="{{ url_for('chat.index') }}" aria-label="Mensagens{% if msg_nao_lidas %}, {{ msg_nao_lidas }} não lidas{% endif %}">
+          <i class="bi bi-chat-dots" aria-hidden="true"></i>{% if msg_nao_lidas %}<span class="count" data-count="msg">{{ msg_nao_lidas }}</span>{% endif %}
+        </a>
+        <a class="topbar-btn" href="{{ url_for('notificacoes.index') }}" aria-label="Notificações{% if notif_nao_lidas %}, {{ notif_nao_lidas }} não lidas{% endif %}">
+          <i class="bi bi-bell" aria-hidden="true"></i>{% if notif_nao_lidas %}<span class="count" data-count="notif">{{ notif_nao_lidas }}</span>{% endif %}
+        </a>
+        <div class="dropdown">
+          <button class="btn p-0 border-0 d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menu da conta">
+            {{ m.avatar(current_user) }}
+            <span class="d-none d-xl-inline fw-semibold small">{{ current_user.primeiro_nome }}</span>
+            <i class="bi bi-chevron-down small d-none d-xl-inline" aria-hidden="true"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+            <li><span class="dropdown-item-text small text-muted">{{ current_user.email }}</span></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{{ url_for('conta.index') }}"><i class="bi bi-person me-2" aria-hidden="true"></i>Minha conta e perfis</a></li>
+            <li><a class="dropdown-item" href="{{ url_for('marketplace.meus') }}"><i class="bi bi-megaphone me-2" aria-hidden="true"></i>Meus anúncios</a></li>
+            <li><a class="dropdown-item" href="{{ url_for('marketplace.favoritos') }}"><i class="bi bi-heart me-2" aria-hidden="true"></i>Favoritos</a></li>
+            <li><a class="dropdown-item" href="{{ url_for('conta.suporte') }}"><i class="bi bi-life-preserver me-2" aria-hidden="true"></i>Suporte e privacidade</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <form method="post" action="{{ url_for('auth.logout') }}" data-logout-form>
+                {{ m.csrf() }}
+                <button class="dropdown-item text-danger" type="submit"><i class="bi bi-box-arrow-right me-2" aria-hidden="true"></i>Sair</button>
+              </form>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </header>
+
+    <main class="content" id="conteudo" tabindex="-1">
+      {% if aviso_global %}<div class="notice mb-3" role="status"><i class="bi bi-megaphone me-1 text-gold" aria-hidden="true"></i>{{ aviso_global }}</div>{% endif %}
+      {% if not current_user.email_verificado and request.endpoint == 'main.dashboard' %}
+      <div class="notice mb-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <span><i class="bi bi-envelope-exclamation me-1" aria-hidden="true"></i>Seu e-mail ainda não foi confirmado.</span>
+        <form method="post" action="{{ url_for('auth.reenviar_verificacao') }}">{{ m.csrf() }}<button class="btn btn-sm btn-outline-primary" type="submit">Enviar link de confirmação</button></form>
+      </div>
+      {% endif %}
+      {% with mensagens = get_flashed_messages(with_categories=true) %}
+        {% if mensagens %}
+        <div class="toast-area" aria-live="polite">
+          {% for cat, msg in mensagens %}
+          <div class="alert alert-{{ {'error': 'danger', 'message': 'info'}.get(cat, cat) }} alert-dismissible shadow-sm fade show" role="{{ 'alert' if cat in ('error', 'danger') else 'status' }}">
+            {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <nav class="bottom-nav" aria-label="Navegação rápida">
+    <a href="{{ url_for('main.dashboard') }}" class="{% if request.endpoint == 'main.dashboard' %}active{% endif %}"><i class="bi bi-speedometer2" aria-hidden="true"></i>Painel</a>
+    <a href="{{ url_for('animais.index') }}" class="{% if request.blueprint == 'animais' %}active{% endif %}"><i class="bi bi-tags" aria-hidden="true"></i>Rebanho</a>
+    <a href="{{ url_for('marketplace.index') }}" class="{% if request.blueprint == 'marketplace' %}active{% endif %}"><i class="bi bi-shop" aria-hidden="true"></i>Mercado</a>
+    <a href="{{ url_for('chat.index') }}" class="{% if request.blueprint == 'chat' %}active{% endif %}"><i class="bi bi-chat-dots" aria-hidden="true"></i>Mensagens{% if msg_nao_lidas %}<span class="dot"></span>{% endif %}</a>
+    <button type="button" data-sidebar-open aria-controls="sidebar"><i class="bi bi-grid" aria-hidden="true"></i>Menu</button>
+  </nav>
+</div>
+{% endblock %}

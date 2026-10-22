@@ -1,0 +1,26 @@
+{% extends "layouts/app.html" %}
+{% block title %}Notificações{% endblock %}
+{% block content %}
+{% call m.page_head('Notificações', 'Alertas de vacinas, estoque, contas, tarefas, mensagens, orçamentos e candidaturas.') %}
+  <a class="btn btn-outline-primary" href="{{ url_for('notificacoes.index', atualizar=1) }}"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i>Verificar alertas</a>
+  <form method="post" action="{{ url_for('notificacoes.marcar_lidas') }}">{{ m.csrf() }}<button class="btn btn-primary" type="submit"><i class="bi bi-check2-all" aria-hidden="true"></i>Marcar todas como lidas</button></form>
+{% endcall %}
+<div class="d-flex gap-2 mb-3">
+  <a class="cat-chip {% if not filtro %}active{% endif %}" href="{{ url_for('notificacoes.index') }}">Todas</a>
+  <a class="cat-chip {% if filtro == 'nao_lidas' %}active{% endif %}" href="{{ url_for('notificacoes.index', filtro='nao_lidas') }}">Não lidas</a>
+</div>
+<div class="card">
+  {% if pag.items %}
+  <ul class="activity px-3">{% for n in pag.items %}
+    <li class="{% if not n.lida %}fw-semibold{% endif %}">
+      <span class="ico"><i class="bi {{ icones.get(n.tipo, 'bi-bell') }}" aria-hidden="true"></i></span>
+      <div class="min-w-0 flex-grow-1">
+        <a class="text-reset" href="{{ url_for('notificacoes.abrir', nid=n.id) }}">{{ n.titulo }}</a>{% if not n.lida %} <span class="badge badge-soft-gold">nova</span>{% endif %}
+        {% if n.mensagem %}<div class="small text-muted fw-normal">{{ n.mensagem }}</div>{% endif %}
+        <div class="when fw-normal">{{ n.created_at|tempo_relativo }}</div>
+      </div>
+    </li>{% endfor %}</ul>
+  {% else %}{{ m.empty('bi-bell', 'Nenhuma notificação', 'Alertas são gerados a partir dos seus registros. E-mails e notificações push só são enviados quando o serviço estiver configurado.') }}{% endif %}
+</div>
+{{ m.pagination(pag, 'notificacoes.index') }}
+{% endblock %}

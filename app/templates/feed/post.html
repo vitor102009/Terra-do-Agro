@@ -1,0 +1,19 @@
+{% extends "layouts/app.html" %}
+{% block title %}Publicação de {{ p.autor.nome }}{% endblock %}
+{% block content %}
+<a class="small d-inline-flex align-items-center mb-2" href="{{ url_for('comunidade.grupo', gid=p.grupo_id) if p.grupo_id else url_for('feed.index') }}"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>{{ p.grupo.nome if p.grupo else 'Feed rural' }}</a>
+<div style="max-width: 760px">
+  {% if p.removido %}<div class="alert alert-warning">Publicação removida: {{ p.removido_motivo }}</div>{% endif %}
+  {% set detalhe = True %}{% set grupo = None %}
+  {% include "feed/_post.html" %}
+  {% if not p.removido %}
+  <div class="card" id="comentar"><div class="card-body">
+    <form method="post" action="{{ url_for('feed.comentar', pid=p.id) }}">{{ m.csrf() }}<input type="hidden" name="next" value="{{ request.path }}">
+      <label class="form-label" for="comentario">Comentar</label>
+      <textarea class="form-control mb-2" id="comentario" name="texto" rows="2" maxlength="2000" required></textarea>
+      <button class="btn btn-primary btn-sm" type="submit">Comentar</button>
+    </form>
+  </div></div>
+  {% endif %}
+</div>
+{% endblock %}

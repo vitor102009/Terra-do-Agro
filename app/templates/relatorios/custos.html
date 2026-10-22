@@ -1,0 +1,38 @@
+{% extends "layouts/app.html" %}
+{% block title %}Custos de produção{% endblock %}
+{% block content %}
+{% call m.page_head('Custos de produção', propriedade_atual.nome ~ ' · ' ~ (inicio|data_br) ~ ' a ' ~ (fim|data_br)) %}
+  <a class="btn btn-outline-primary" href="{{ url_for('relatorios.ver', tipo='custos_lote', inicio=inicio, fim=fim) }}">Relatório por lote</a>
+  <a class="btn btn-outline-primary" href="{{ url_for('relatorios.ver', tipo='custos_animal', inicio=inicio, fim=fim) }}">Relatório por animal</a>
+{% endcall %}
+<form class="filters" method="get">
+  <div class="row g-2 align-items-end">
+    <div class="col-6 col-md-3"><label class="form-label" for="inicio">Data inicial</label><input class="form-control" type="date" id="inicio" name="inicio" value="{{ inicio.isoformat() }}"></div>
+    <div class="col-6 col-md-3"><label class="form-label" for="fim">Data final</label><input class="form-control" type="date" id="fim" name="fim" value="{{ fim.isoformat() }}"></div>
+    <div class="col-12 col-md-2"><button class="btn btn-primary w-100" type="submit">Calcular</button></div>
+  </div>
+</form>
+<div class="row g-3 mb-3">
+  <div class="col-6 col-xl-3"><div class="card kpi kpi-dark"><div class="label"><i class="bi bi-calculator" aria-hidden="true"></i>Custo total de produção</div><div class="value">{{ c.total_geral|moeda }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="card kpi"><div class="label"><i class="bi bi-people" aria-hidden="true"></i>Custo compartilhado</div><div class="value">{{ c.compartilhado|moeda }}</div><div class="hint">rateado por cabeça</div></div></div>
+  <div class="col-6 col-xl-3"><div class="card kpi"><div class="label"><i class="bi bi-tags" aria-hidden="true"></i>Animais ativos</div><div class="value">{{ c.total_animais }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="card kpi kpi-gold"><div class="label"><i class="bi bi-person" aria-hidden="true"></i>Custo médio por cabeça</div><div class="value">{{ c.custo_medio_cabeca|moeda if c.custo_medio_cabeca is not none else '—' }}</div></div></div>
+</div>
+<div class="card mb-3"><div class="card-header"><h2>Por lote</h2></div>
+  {% if c.lotes %}
+  <div class="table-responsive"><table class="table align-middle table-responsive-cards">
+    <thead><tr><th>Lote</th><th class="num">Animais</th><th class="num">Despesas diretas</th><th class="num">Consumo de estoque</th><th class="num">Diretos dos animais</th><th class="num">Rateio</th><th class="num">Total</th><th class="num">Por cabeça</th></tr></thead>
+    <tbody>{% for l in c.lotes %}<tr>
+      <td data-label="Lote">{% if l.lote_id %}<a href="{{ url_for('lotes.detalhe', lid=l.lote_id) }}">{{ l.lote }}</a>{% else %}{{ l.lote }}{% endif %}</td>
+      <td class="num" data-label="Animais">{{ l.animais }}</td><td class="num" data-label="Despesas diretas">{{ l.direto|moeda }}</td><td class="num" data-label="Consumo">{{ l.consumo|moeda }}</td>
+      <td class="num" data-label="Diretos dos animais">{{ l.animais_direto|moeda }}</td><td class="num" data-label="Rateio">{{ l.rateio|moeda }}</td>
+      <td class="num fw-semibold" data-label="Total">{{ l.total|moeda }}</td><td class="num" data-label="Por cabeça">{{ l.por_cabeca|moeda if l.por_cabeca is not none else '—' }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<div class="card-body">{{ m.empty('bi-calculator', 'Sem custos no período', 'Lance despesas associadas a lotes e animais, ou registre saídas de estoque.') }}</div>{% endif %}
+</div>
+<div class="card"><div class="card-body">
+  <h2 class="h6">Como os custos são calculados</h2>
+  {% for n in notas %}<p class="small text-muted mb-1">{{ n }}</p>{% endfor %}
+  <p class="small text-muted mb-0">Para incluir ou excluir uma categoria do custo de produção, fale com o administrador da plataforma. Os valores são gerenciais e não substituem a contabilidade.</p>
+</div></div>
+{% endblock %}

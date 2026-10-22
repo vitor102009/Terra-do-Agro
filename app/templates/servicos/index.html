@@ -1,0 +1,32 @@
+{% extends "layouts/app.html" %}
+{% block title %}Serviços contratados{% endblock %}
+{% block content %}
+{% call m.page_head('Serviços e contratações', 'Acompanhe pedidos de orçamento e atendimentos.') %}
+  <a class="btn btn-primary" href="{{ url_for('profissionais.index') }}"><i class="bi bi-search" aria-hidden="true"></i>Encontrar profissional</a>
+{% endcall %}
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item"><a class="nav-link {% if papel == 'cliente' %}active{% endif %}" href="{{ url_for('servicos.index', papel='cliente', situacao=situacao) }}">Minhas solicitações</a></li>
+  {% if tem_perfil %}<li class="nav-item"><a class="nav-link {% if papel == 'profissional' %}active{% endif %}" href="{{ url_for('servicos.index', papel='profissional', situacao=situacao) }}">Recebidas como profissional</a></li>{% endif %}
+</ul>
+<div class="d-flex gap-2 mb-3">
+  {% for k, r in [('abertas', 'Em aberto'), ('encerradas', 'Encerradas'), ('todas', 'Todas')] %}
+  <a class="cat-chip {% if situacao == k %}active{% endif %}" href="{{ url_for('servicos.index', papel=papel, situacao=k) }}">{{ r }}</a>
+  {% endfor %}
+</div>
+<div class="card">
+  {% if pag.items %}
+  <div class="table-responsive"><table class="table table-hover align-middle table-responsive-cards">
+    <thead><tr><th>Solicitação</th><th>{{ 'Profissional' if papel == 'cliente' else 'Cliente' }}</th><th>Tipo</th><th>Situação</th><th>Atualizada</th></tr></thead>
+    <tbody>{% for s in pag.items %}
+      <tr>
+        <td data-label="Solicitação"><a class="fw-semibold" href="{{ url_for('servicos.detalhe', sid=s.id) }}">{{ s.titulo }}</a><small class="d-block text-muted">{{ s.municipio or '' }}{% if s.uf %}/{{ s.uf }}{% endif %}</small></td>
+        <td data-label="{{ 'Profissional' if papel == 'cliente' else 'Cliente' }}">{% if papel == 'cliente' %}{{ s.perfil.user.nome }}<small class="d-block text-muted">{{ s.perfil.categoria.nome }}</small>{% else %}{{ s.cliente.nome }}{% endif %}</td>
+        <td data-label="Tipo">{{ 'Orçamento' if s.tipo == 'orcamento' else 'Atendimento' }}</td>
+        <td data-label="Situação">{{ m.situacao_badge(s.status, s.status_label) }}</td>
+        <td data-label="Atualizada">{{ s.updated_at|tempo_relativo }}</td>
+      </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}{{ m.empty('bi-clipboard-check', 'Nenhuma solicitação aqui', 'Encontre veterinários, agrônomos, técnicos e prestadores de serviço em Profissionais do Agro.' if papel == 'cliente' else 'Quando um produtor solicitar seus serviços, o pedido aparecerá aqui.') }}{% endif %}
+</div>
+{{ m.pagination(pag, 'servicos.index') }}
+{% endblock %}

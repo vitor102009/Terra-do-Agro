@@ -1,0 +1,17 @@
+{% extends "admin/_base.html" %}
+{% block title %}Denúncias · Administração{% endblock %}
+{% block admin %}
+<div class="d-flex gap-2 mb-3">{% for k, r in [('aberta', 'Abertas'), ('procedente', 'Procedentes'), ('improcedente', 'Improcedentes')] %}<a class="cat-chip {% if status == k %}active{% endif %}" href="{{ url_for('admin.denuncias', status=k) }}">{{ r }}</a>{% endfor %}</div>
+<div class="card">
+  {% if itens %}<div class="table-responsive"><table class="table table-hover align-middle table-responsive-cards">
+    <thead><tr><th>Data</th><th>Alvo</th><th>Motivo</th><th>Denunciante</th><th></th></tr></thead>
+    <tbody>{% for d in itens %}<tr>
+      <td data-label="Data">{{ d.created_at|datahora_br }}</td>
+      <td data-label="Alvo">{{ alvos.get(d.alvo_tipo) }} #{{ d.alvo_id }}</td>
+      <td data-label="Motivo">{{ motivos.get(d.motivo) }}</td>
+      <td data-label="Denunciante">{{ d.autor.nome if d.autor else '—' }}</td>
+      <td class="text-end" data-label=""><a class="btn btn-sm btn-primary" href="{{ url_for('admin.denuncia', did=d.id) }}">Analisar</a></td>
+    </tr>{% endfor %}</tbody></table></div>
+  {% else %}{{ m.empty('bi-flag', 'Nenhuma denúncia nesta situação') }}{% endif %}
+</div>
+{% endblock %}

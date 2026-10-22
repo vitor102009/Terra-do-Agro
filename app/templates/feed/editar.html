@@ -1,0 +1,15 @@
+{% extends "layouts/app.html" %}
+{% block title %}Editar publicação{% endblock %}
+{% block content %}
+{{ m.page_head('Editar publicação', 'A publicação será marcada como editada.', back=url_for('feed.post', pid=p.id)) }}
+<div class="card" style="max-width: 760px"><div class="card-body">
+  {{ m.form_errors() }}
+  <form method="post" novalidate>{{ m.csrf() }}
+    <div class="row g-3">
+      {{ m.textarea('texto', 'Texto', rows=5) }}
+      {{ m.select('tipo', 'Tipo', tipos, required=True, empty=None, col='col-md-6') }}
+    </div>
+    <div class="form-actions"><a class="btn btn-outline-secondary" href="{{ url_for('feed.post', pid=p.id) }}">Cancelar</a><button class="btn btn-primary" type="submit">Salvar</button></div>
+  </form>
+</div></div>
+{% endblock %}

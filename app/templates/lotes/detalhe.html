@@ -1,0 +1,96 @@
+{% extends "layouts/app.html" %}
+{% block title %}Lote {{ lote.nome }}{% endblock %}
+{% block content %}
+{% call m.page_head('Lote ' ~ lote.nome, (lote.finalidade or '') ~ (' · Pastagem ' ~ lote.pastagem.nome if lote.pastagem else ''), back=url_for('lotes.index')) %}
+  {% if pode('editar') %}
+  <a class="btn btn-gold" href="{{ url_for('pesagens.nova', lote=lote.id, modo='lote') }}"><i class="bi bi-speedometer" aria-hidden="true"></i>Pesagem do lote</a>
+  <a class="btn btn-outline-primary" href="{{ url_for('saude.novo', lote=lote.id) }}"><i class="bi bi-shield-plus" aria-hidden="true"></i>Sanidade do lote</a>
+  <a class="btn btn-outline-primary" href="{{ url_for('animais.novo', lote=lote.id) }}"><i class="bi bi-plus-lg" aria-hidden="true"></i>Animal</a>
+  <a class="btn btn-outline-primary" href="{{ url_for('lotes.editar', lid=lote.id) }}"><i class="bi bi-pencil" aria-hidden="true"></i>Editar</a>
+  {% endif %}
+{% endcall %}
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-3"><div class="card kpi"><div class="label"><i class="bi bi-tags" aria-hidden="true"></i>Animais ativos</div><div class="value">{{ animais|length }}</div></div></div>
+  <div class="col-6 col-md-3"><div class="card kpi"><div class="label"><i class="bi bi-speedometer" aria-hidden="true"></i>Peso médio</div><div class="value">{{ (peso_medio|numero(1) ~ ' kg') if peso_medio is not none else '—' }}</div><div class="hint">pelo peso atual de cada animal</div></div></div>
+  <div class="col-12 col-md-6"><div class="card kpi"><div class="label"><i class="bi bi-grid-3x3" aria-hidden="true"></i>Lotação na pastagem</div>
+    <div class="value">{% if lot and lot.ok %}{{ lot.ua_ha|numero(2) }} UA/ha{% else %}—{% endif %}</div>
+    <div class="hint">{% if not lote.pastagem %}Lote sem pastagem associada{% elif lot and not lot.ok %}{{ lot.motivo }}{% else %}{{ lot.ua|numero(1) }} UA em {{ lote.pastagem.area_ha|numero(2) }} ha (considera só este lote){% endif %}</div></div></div>
+</div>
+
+<div class="row g-3">
+  <div class="col-xl-7">
+    <div class="card mb-3">
+      <div class="card-header"><h2>Animais do lote</h2></div>
+      {% if animais %}
+      <form method="post" action="{{ url_for('lotes.transferir', lid=lote.id) }}">
+        {{ m.csrf() }}
+        <div class="table-responsive" style="max-height: 460px"><table class="table table-sm table-hover align-middle mb-0">
+          <thead><tr>{% if pode('editar') %}<th style="width: 36px"><span class="visually-hidden">Selecionar</span></th>{% endif %}<th>Brinco</th><th>Categoria</th><th>Sexo</th><th class="num">Peso atual</th></tr></thead>
+          <tbody>{% for a in animais %}
+            <tr>
+              {% if pode('editar') %}<td><input class="form-check-input" type="checkbox" name="animais" value="{{ a.id }}" aria-label="Selecionar {{ a.identificacao }}"></td>{% endif %}
+              <td><a href="{{ url_for('animais.ficha', aid=a.id) }}">{{ a.identificacao }}</a></td><td>{{ a.categoria or '—' }}</td><td>{{ 'Fêmea' if a.sexo == 'F' else 'Macho' }}</td>
+              <td class="num">{{ (a.peso_atual|numero(1) ~ ' kg') if a.peso_atual is not none else '—' }}</td>
+            </tr>{% endfor %}
+          </tbody>
+        </table></div>
+        {% if pode('editar') %}
+        <div class="card-body border-top d-flex flex-wrap gap-2 align-items-end">
+          <div><label class="form-label small" for="destino">Mover selecionados para</label>
+            <select class="form-select form-select-sm" id="destino" name="destino"><option value="">Sem lote</option>{% for o in outros_lotes %}<option value="{{ o.id }}">{{ o.nome }}</option>{% endfor %}</select></div>
+          <button class="btn btn-sm btn-primary" type="submit" name="acao" value="mover">Transferir</button>
+        </div>
+        {% endif %}
+      </form>
+      {% else %}<div class="card-body text-muted small">Nenhum animal ativo neste lote.</div>{% endif %}
+    </div>
+
+    {% if pode('editar') and sem_lote %}
+    <div class="card mb-3">
+      <div class="card-header"><h2>Adicionar animais sem lote</h2></div>
+      <form method="post" action="{{ url_for('lotes.transferir', lid=lote.id) }}">
+        {{ m.csrf() }}
+        <div class="card-body" style="max-height: 260px; overflow-y: auto">
+          <div class="d-flex flex-wrap gap-3">
+          {% for a in sem_lote %}
+            <div class="form-check"><input class="form-check-input" type="checkbox" name="animais" value="{{ a.id }}" id="sl-{{ a.id }}"><label class="form-check-label" for="sl-{{ a.id }}">{{ a.identificacao }}</label></div>
+          {% endfor %}
+          </div>
+        </div>
+        <div class="card-body border-top"><button class="btn btn-sm btn-primary" type="submit" name="acao" value="adicionar">Adicionar a {{ lote.nome }}</button></div>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="col-xl-5">
+    <div class="card mb-3"><div class="card-header"><h2>Pesagens do lote</h2></div>
+      {% if pesagens_lote %}
+      <ul class="list-group list-group-flush">{% for p in pesagens_lote %}
+        <li class="list-group-item d-flex justify-content-between"><span>{{ p.data|data_br }}<small class="d-block text-muted">{{ p.qtd_animais or '?' }} animais</small></span><span class="fw-semibold">{{ p.peso_kg|numero(1) }} kg/animal</span></li>
+      {% endfor %}</ul>
+      {% else %}<div class="card-body text-muted small">Sem pesagens coletivas. As pesagens individuais aparecem na ficha de cada animal.</div>{% endif %}
+    </div>
+
+    <div class="card mb-3"><div class="card-header"><h2>Consumo de insumos</h2></div>
+      {% if consumo %}
+      <ul class="list-group list-group-flush">{% for c in consumo %}
+        <li class="list-group-item d-flex justify-content-between"><span>{{ c.insumo.nome }}<small class="d-block text-muted">{{ c.data|data_br }}</small></span><span>{{ c.quantidade|numero(2) }} {{ c.insumo.unidade }}{% if c.custo_total and pode('financeiro') %}<small class="d-block text-muted text-end">{{ c.custo_total|moeda }}</small>{% endif %}</span></li>
+      {% endfor %}</ul>
+      {% else %}<div class="card-body text-muted small">Nenhuma saída de estoque destinada a este lote.</div>{% endif %}
+    </div>
+
+    {% if pode('financeiro') %}
+    <div class="card mb-3"><div class="card-header"><h2>Despesas diretas do lote</h2><a class="small" href="{{ url_for('relatorios.custos') }}">Custos por lote</a></div>
+      {% if custos %}
+      <ul class="list-group list-group-flush">{% for l in custos %}
+        <li class="list-group-item d-flex justify-content-between"><a href="{{ url_for('financeiro.detalhe', lid=l.id) }}">{{ l.descricao }}<small class="d-block text-muted">{{ l.data|data_br }}</small></a><span class="value-neg fw-semibold">{{ l.valor|moeda }}</span></li>
+      {% endfor %}</ul>
+      {% else %}<div class="card-body text-muted small">Ao lançar despesas, associe-as ao lote para calcular o custo de produção.</div>{% endif %}
+    </div>
+    {% endif %}
+    {% if lote.descricao %}<div class="card"><div class="card-body small text-pre">{{ lote.descricao }}</div></div>{% endif %}
+  </div>
+</div>
+{% endblock %}

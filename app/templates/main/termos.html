@@ -1,0 +1,23 @@
+{% extends "main/_doc.html" %}
+{% block title %}Termos de uso{% endblock %}
+{% block doc %}
+<h1 class="h3">Termos de uso</h1>
+<p class="text-muted small">Versão base para a plataforma. O responsável pela operação deve revisá-la com assessoria jurídica antes do uso em produção.</p>
+<h2 class="h5 mt-4">1. O que é o Terra do Agro</h2>
+<p>Uma plataforma de gestão rural, marketplace, contratação de serviços, vagas e comunidade. O Terra do Agro não é parte nas negociações entre usuários, não processa pagamentos nem entregas e não garante contratação, venda ou resultado financeiro.</p>
+<h2 class="h5 mt-4">2. Responsabilidades do usuário</h2>
+<ul>
+  <li>Manter dados verdadeiros e a senha em sigilo.</li>
+  <li>Anunciar apenas produtos e serviços que existem, que pode vender ou prestar e que são permitidos por lei, incluindo a documentação sanitária de animais (como GTA).</li>
+  <li>Oferecer apenas serviços compatíveis com sua formação e habilitação profissional.</li>
+  <li>Identificar conteúdos comerciais e respeitar os demais participantes.</li>
+</ul>
+<h2 class="h5 mt-4">3. Profissionais e verificação</h2>
+<p>O selo "Verificado" indica somente que a equipe conferiu o registro profissional informado na data da análise. Avaliações só podem ser feitas após contratações registradas como concluídas.</p>
+<h2 class="h5 mt-4">4. Informações técnicas</h2>
+<p>Os módulos de sanidade e reprodução são ferramentas de organização e não substituem a avaliação de um médico-veterinário ou de outro profissional habilitado. Indicadores e custos são gerenciais e não substituem a contabilidade. Previsões do tempo e cotações exibem a fonte e a data de referência.</p>
+<h2 class="h5 mt-4">5. Moderação</h2>
+<p>Conteúdos que violem estes termos podem ser removidos, e contas podem ser suspensas. Todas as ações administrativas ficam registradas.</p>
+<h2 class="h5 mt-4">6. Privacidade</h2>
+<p>O tratamento de dados pessoais segue a <a href="{{ url_for('main.privacidade') }}">Política de privacidade</a>.</p>
+{% endblock %}

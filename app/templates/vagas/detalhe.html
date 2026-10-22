@@ -1,0 +1,81 @@
+{% extends "layouts/app.html" %}
+{% block title %}{{ vaga.cargo }}{% endblock %}
+{% block content %}
+{% call m.page_head(vaga.cargo, vaga.empregador ~ ' · ' ~ vaga.municipio ~ '/' ~ vaga.uf, back=url_for('vagas.index')) %}
+  {% if dono %}
+  <a class="btn btn-outline-primary" href="{{ url_for('vagas.editar', vid=vaga.id) }}"><i class="bi bi-pencil" aria-hidden="true"></i>Editar</a>
+  <form method="post" action="{{ url_for('vagas.encerrar', vid=vaga.id) }}">{{ m.csrf() }}<button class="btn btn-outline-{{ 'danger' if vaga.status == 'aberta' else 'primary' }}" type="submit">{{ 'Encerrar vaga' if vaga.status == 'aberta' else 'Reabrir vaga' }}</button></form>
+  {% endif %}
+{% endcall %}
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card mb-3"><div class="card-body">
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        <span class="badge badge-soft-green">{{ tipos.get(vaga.tipo_contratacao) }}</span>
+        <span class="badge badge-soft-gray">{{ vaga.categoria_label }}</span>
+        {% if vaga.status != 'aberta' %}<span class="badge badge-soft-red">Vaga {{ vaga.status }}</span>{% endif %}
+        {% if vaga.prazo %}<span class="badge {{ 'badge-soft-red' if vaga.prazo < hoje else 'badge-soft-gold' }}">Inscrições até {{ vaga.prazo|data_br }}</span>{% endif %}
+        {% if vaga.is_demo %}<span class="badge badge-demo">Demonstração</span>{% endif %}
+      </div>
+      <p class="text-pre">{{ vaga.descricao }}</p>
+      {% if vaga.atividades %}<h2 class="h6">Atividades</h2><p class="text-pre small">{{ vaga.atividades }}</p>{% endif %}
+      {% if vaga.requisitos %}<h2 class="h6">Requisitos</h2><p class="text-pre small">{{ vaga.requisitos }}</p>{% endif %}
+      <dl class="dl-grid mt-3">
+        <div><dt>Experiência</dt><dd>{{ vaga.experiencia or '—' }}</dd></div>
+        <div><dt>Jornada</dt><dd>{{ vaga.jornada or '—' }}</dd></div>
+        <div><dt>Salário</dt><dd>{% if vaga.salario_min or vaga.salario_max %}{{ vaga.salario_min|moeda if vaga.salario_min else '' }}{% if vaga.salario_min and vaga.salario_max %} a {% endif %}{{ vaga.salario_max|moeda if vaga.salario_max else '' }}{% else %}A combinar{% endif %}</dd></div>
+        <div><dt>Benefícios</dt><dd>{{ vaga.beneficios or '—' }}</dd></div>
+      </dl>
+      {% if vaga.forma_candidatura %}<h2 class="h6 mt-3">Como se candidatar</h2><p class="text-pre small mb-0">{{ vaga.forma_candidatura }}</p>{% endif %}
+    </div></div>
+
+    {% if dono %}
+    <div class="card"><div class="card-header"><h2>Candidaturas ({{ candidaturas|length }})</h2></div>
+      {% if candidaturas %}<ul class="list-group list-group-flush">{% for c in candidaturas %}{% set pf = perfis.get(c.user_id) %}
+        <li class="list-group-item">
+          <div class="d-flex flex-wrap justify-content-between gap-2">
+            <div><span class="fw-semibold">{{ c.candidato.nome }}</span> {{ m.situacao_badge(c.status, c.status_label) }}
+              {% if pf %}<div class="small text-muted">{{ pf.titulo }} · {{ pf.municipio }}/{{ pf.uf }}</div>
+              {% if pf.compartilhar_contato and pf.telefone_contato %}<div class="small"><i class="bi bi-telephone" aria-hidden="true"></i> {{ pf.telefone_contato }} <span class="text-muted">(contato autorizado pelo candidato)</span></div>{% endif %}{% endif %}
+            </div>
+            <span class="small text-muted">{{ c.created_at|datahora_br }}</span>
+          </div>
+          {% if c.mensagem %}<p class="small text-pre mt-1 mb-1">{{ c.mensagem }}</p>{% endif %}
+          {% if pf %}<details class="small mb-2"><summary>Experiências e habilidades</summary><p class="text-pre mb-1">{{ pf.experiencias or '' }}</p><p class="text-pre mb-0">{{ pf.habilidades or '' }}</p></details>{% endif %}
+          <form class="d-flex flex-wrap gap-2 align-items-center" method="post" action="{{ url_for('vagas.status_candidatura', cid=c.id) }}">{{ m.csrf() }}
+            <label class="visually-hidden" for="st-{{ c.id }}">Situação</label>
+            <select class="form-select form-select-sm w-auto" id="st-{{ c.id }}" name="status">{% for k, r in status.items() %}<option value="{{ k }}" {% if k == c.status %}selected{% endif %}>{{ r }}</option>{% endfor %}</select>
+            <button class="btn btn-sm btn-primary" type="submit">Atualizar</button>
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('chat.iniciar', user_id=c.user_id, vaga=vaga.id) }}">Conversar</a>
+          </form>
+        </li>{% endfor %}</ul>
+      {% else %}<div class="card-body small text-muted">Nenhuma candidatura ainda.</div>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+  <div class="col-lg-4">
+    {% if not dono %}
+    <div class="card mb-3"><div class="card-body">
+      {% if minha %}
+        <p class="mb-2">Sua candidatura: {{ m.situacao_badge(minha.status, minha.status_label) }}</p>
+        <a class="btn btn-outline-primary w-100 mb-2" href="{{ url_for('chat.iniciar', user_id=vaga.user_id, vaga=vaga.id) }}">Conversar com o responsável</a>
+        {% if minha.status != 'encerrada' %}<form method="post" action="{{ url_for('vagas.status_candidatura', cid=minha.id) }}" data-confirm="Desistir desta candidatura?">{{ m.csrf() }}<input type="hidden" name="status" value="encerrada"><button class="btn btn-sm btn-link text-danger w-100" type="submit">Desistir</button></form>{% endif %}
+      {% elif vaga.status == 'aberta' and not (vaga.prazo and vaga.prazo < hoje) %}
+        {% if perfil %}
+        <form method="post" action="{{ url_for('vagas.candidatar', vid=vaga.id) }}">{{ m.csrf() }}
+          <label class="form-label" for="mensagem">Mensagem ao empregador (opcional)</label>
+          <textarea class="form-control mb-2" id="mensagem" name="mensagem" rows="4" placeholder="Conte sua experiência e disponibilidade"></textarea>
+          <p class="small text-muted">O empregador verá seu perfil de trabalhador. O telefone só aparece se você autorizou no perfil.</p>
+          <button class="btn btn-gold w-100" type="submit">Candidatar-me</button>
+        </form>
+        {% else %}
+        <p class="small">Para se candidatar, crie seu perfil de trabalhador.</p>
+        <a class="btn btn-primary w-100" href="{{ url_for('vagas.meu_perfil', next=url_for('vagas.detalhe', vid=vaga.id)) }}">Criar perfil</a>
+        {% endif %}
+      {% else %}<p class="text-muted mb-0">Inscrições encerradas.</p>{% endif %}
+    </div></div>
+    <div class="text-center">{{ m.denunciar('vaga', vaga.id) }}</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

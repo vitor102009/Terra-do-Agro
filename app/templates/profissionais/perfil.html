@@ -1,0 +1,84 @@
+{% extends "layouts/app.html" %}
+{% block title %}{{ p.user.nome }} · {{ p.categoria.nome }}{% endblock %}
+{% block content %}
+<a class="small d-inline-flex align-items-center mb-2" href="{{ url_for('profissionais.index') }}"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Profissionais do Agro</a>
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card mb-3">
+      <div class="profile-cover"></div>
+      <div class="profile-head">
+        <div class="d-flex flex-wrap align-items-end gap-3">
+          {{ m.avatar(p.user, 'avatar-lg avatar-gold') }}
+          <div class="flex-grow-1 min-w-0 pb-1">
+            <h1 class="h3 mb-0">{{ p.user.nome }}</h1>
+            <div class="text-muted">{{ p.categoria.nome }} · {{ p.municipio }}/{{ p.uf }}</div>
+          </div>
+          <div class="pb-1">
+            {% if p.verificado %}<span class="badge badge-verified fs-6"><i class="bi bi-patch-check" aria-hidden="true"></i> Registro verificado</span>
+            {% else %}<span class="badge badge-soft-gray">Registro não verificado</span>{% endif %}
+            {% if p.is_demo %}<span class="badge badge-demo">Demonstração</span>{% endif %}
+          </div>
+        </div>
+        <h2 class="h5 mt-3">{{ p.titulo }}</h2>
+        <p class="text-pre">{{ p.descricao }}</p>
+        {% if p.lista_especialidades %}<div class="d-flex flex-wrap gap-1">{% for esp in p.lista_especialidades %}<span class="badge badge-soft-green">{{ esp }}</span>{% endfor %}</div>{% endif %}
+      </div>
+    </div>
+
+    {% if p.servicos %}
+    <div class="card mb-3"><div class="card-header"><h2>Serviços</h2></div>
+      <ul class="list-group list-group-flush">{% for s in p.servicos %}
+        <li class="list-group-item"><div class="d-flex justify-content-between gap-2"><span class="fw-semibold">{{ s.nome }}</span><span class="text-muted small">{{ s.preco_info or 'Sob orçamento' }}</span></div>{% if s.descricao %}<div class="small text-muted text-pre">{{ s.descricao }}</div>{% endif %}</li>
+      {% endfor %}</ul>
+    </div>
+    {% endif %}
+
+    <div class="card mb-3"><div class="card-body">
+      <dl class="dl-grid">
+        {% if p.categoria.registro_label %}<div><dt>{{ p.categoria.registro_label }}</dt><dd>{% if p.registro_numero %}{{ p.registro_numero }}/{{ p.registro_uf }}{% else %}Não informado{% endif %}</dd></div>{% endif %}
+        <div><dt>Atendimento</dt><dd>{{ p.lista_modalidades|rotulos(modalidades)|join(', ') }}</dd></div>
+        <div><dt>Disponibilidade</dt><dd>{{ p.disponibilidade or ('Disponível' if p.disponivel else 'Indisponível no momento') }}</dd></div>
+        <div><dt>Preços</dt><dd>{{ p.preco_info or 'Sob orçamento' }}</dd></div>
+        <div><dt>Área atendida</dt><dd>{{ p.regioes_atendidas or (p.municipio ~ '/' ~ p.uf) }}{% if p.raio_km %} · raio de {{ p.raio_km }} km{% endif %}</dd></div>
+      </dl>
+      {% if p.experiencia %}<h3 class="h6 mt-4">Experiência profissional</h3><p class="text-pre small mb-0">{{ p.experiencia }}</p>{% endif %}
+      {% if p.qualificacoes %}<h3 class="h6 mt-3">Qualificações informadas</h3><p class="text-pre small mb-0">{{ p.qualificacoes }}</p>{% endif %}
+      {% if p.equipamentos %}<h3 class="h6 mt-3">Equipamentos disponíveis</h3><p class="text-pre small mb-0">{{ p.equipamentos }}</p>{% endif %}
+      {% if p.portfolio %}<h3 class="h6 mt-3">Portfólio</h3><p class="text-pre small mb-0">{{ p.portfolio }}</p>{% endif %}
+      {% if p.categoria.aviso_habilitacao %}<p class="notice mt-3 mb-0">{{ p.categoria.aviso_habilitacao }}</p>{% endif %}
+    </div></div>
+
+    <div class="card"><div class="card-header"><h2>Avaliações de clientes {% if p.total_avaliacoes %}<span class="ms-1">{{ m.stars(p.nota_media) }}</span> <small class="text-muted">{{ '%.1f'|format(p.nota_media|float) }} ({{ p.total_avaliacoes }})</small>{% endif %}</h2></div>
+      {% if avaliacoes %}
+      <ul class="list-group list-group-flush">{% for a in avaliacoes %}
+        <li class="list-group-item">
+          <div class="d-flex justify-content-between"><span>{{ m.stars(a.nota) }} <span class="small fw-semibold ms-1">{{ a.autor.primeiro_nome }}</span></span><span class="small text-muted">{{ a.created_at|data_br }}</span></div>
+          {% if a.comentario %}<p class="small mb-1 mt-1 text-pre">{{ a.comentario }}</p>{% endif %}
+          <div class="d-flex justify-content-between align-items-center"><span class="small text-muted">Serviço: {{ a.solicitacao.titulo }}</span>{{ m.denunciar('avaliacao', a.id) }}</div>
+        </li>{% endfor %}</ul>
+      {% else %}<div class="card-body small text-muted">Ainda não há avaliações. Avaliações só podem ser publicadas por clientes após uma contratação concluída.</div>{% endif %}
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card mb-3" style="position: sticky; top: calc(var(--ta-topbar-h) + 16px)"><div class="card-body">
+      {% if p.user_id == current_user.id %}
+      <p class="small text-muted">Este é o seu perfil.</p>
+      <a class="btn btn-primary w-100 mb-2" href="{{ url_for('profissionais.editar_perfil', id=p.id) }}">Editar perfil</a>
+      <a class="btn btn-outline-primary w-100 mb-2" href="{{ url_for('profissionais.servicos', perfil_id=p.id) }}">Gerenciar serviços</a>
+      {% if not p.verificado %}<a class="btn btn-outline-primary w-100" href="{{ url_for('profissionais.verificacao', perfil_id=p.id) }}">Solicitar verificação</a>{% endif %}
+      {% else %}
+      <a class="btn btn-gold w-100 mb-2" href="{{ url_for('servicos.nova', perfil=p.id, tipo='atendimento') }}"><i class="bi bi-calendar-plus" aria-hidden="true"></i>Solicitar atendimento</a>
+      <a class="btn btn-primary w-100 mb-2" href="{{ url_for('servicos.nova', perfil=p.id, tipo='orcamento') }}"><i class="bi bi-receipt" aria-hidden="true"></i>Solicitar orçamento</a>
+      <a class="btn btn-outline-primary w-100" href="{{ url_for('chat.iniciar', user_id=p.user_id) }}"><i class="bi bi-chat-dots" aria-hidden="true"></i>Enviar mensagem</a>
+      <div class="text-center mt-2">{{ m.denunciar('perfil', p.id) }}</div>
+      {% endif %}
+    </div></div>
+    {% if outros %}
+    <div class="card"><div class="card-header"><h2>Outras atuações</h2></div>
+      <div class="list-group list-group-flush">{% for o in outros %}<a class="list-group-item list-group-item-action" href="{{ url_for('profissionais.perfil', perfil_id=o.id) }}">{{ o.categoria.nome }}</a>{% endfor %}</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

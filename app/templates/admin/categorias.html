@@ -1,0 +1,41 @@
+{% extends "admin/_base.html" %}
+{% block title %}Categorias · Administração{% endblock %}
+{% block admin %}
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card mb-3"><div class="card-header"><h2>Categorias profissionais</h2></div>
+      <div class="table-responsive"><table class="table table-sm align-middle">
+        <thead><tr><th>Categoria</th><th>Grupo</th><th>Registro</th><th class="num">Perfis</th><th></th></tr></thead>
+        <tbody>{% for c in cats %}<tr class="{{ 'text-muted' if not c.ativa }}">
+          <td>{{ c.nome }}{% if not c.ativa %} <span class="badge badge-soft-gray">inativa</span>{% endif %}</td><td class="small">{{ grupos.get(c.grupo) }}</td><td class="small">{{ c.registro_label or '—' }}</td>
+          <td class="num">{{ uso.get(c.id, 0) }}</td><td class="text-end"><a class="btn btn-sm btn-link" href="{{ url_for('admin.categorias', editar=c.id) }}">Editar</a></td></tr>{% endfor %}</tbody>
+      </table></div>
+    </div>
+    <div class="card"><div class="card-header"><h2>Categorias financeiras padrão</h2></div>
+      <div class="card-body small text-muted pb-0">Marque quais categorias de despesa entram no cálculo de custo de produção.</div>
+      <ul class="list-group list-group-flush">{% for c in fin %}
+        <li class="list-group-item d-flex justify-content-between align-items-center small"><span>{{ c.nome }} <span class="text-muted">({{ c.tipo }})</span></span>
+          {% if c.tipo == 'despesa' %}<form method="post">{{ m.csrf() }}<button class="btn btn-sm {{ 'btn-primary' if c.custo_producao else 'btn-outline-secondary' }}" name="fin_toggle" value="{{ c.id }}" type="submit">{{ 'Custo de produção' if c.custo_producao else 'Fora do custo' }}</button></form>{% endif %}</li>
+      {% endfor %}</ul>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card"><div class="card-header"><h2>{{ 'Editar ' ~ editar.nome if editar else 'Nova categoria profissional' }}</h2></div><div class="card-body">
+      {{ m.form_errors() }}
+      <form method="post" novalidate>{{ m.csrf() }}
+        <div class="row g-3">
+          {{ m.input('nome', 'Nome', required=True) }}
+          {{ m.input('slug', 'Identificador (opcional)', col='col-md-6') }}
+          {{ m.input('ordem', 'Ordem', type='number', col='col-md-6') }}
+          {{ m.select('grupo', 'Grupo', grupos, required=True) }}
+          {{ m.input('registro_label', 'Nome do registro profissional', placeholder='Ex.: CRMV, CREA, CRBio', col='col-md-6') }}
+          <div class="col-md-6 d-flex align-items-end">{{ m.checkbox('ativa', 'Categoria ativa', col='') }}</div>
+          {{ m.textarea('descricao', 'Descrição', rows=2) }}
+          {{ m.textarea('aviso_habilitacao', 'Aviso sobre habilitação legal (exibido no perfil)', rows=2) }}
+          <div class="col-12 d-flex gap-2">{% if editar %}<a class="btn btn-outline-secondary" href="{{ url_for('admin.categorias') }}">Nova</a>{% endif %}<button class="btn btn-primary flex-fill" type="submit">Salvar</button></div>
+        </div>
+      </form>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "admin/_base.html" %}
+{% block title %}Usuários · Administração{% endblock %}
+{% block admin %}
+<form class="filters" method="get"><div class="row g-2 align-items-end">
+  <div class="col-12 col-md-5"><label class="form-label" for="q">Nome ou e-mail</label><input class="form-control" id="q" name="q" value="{{ args.get('q', '') }}"></div>
+  <div class="col-6 col-md-3"><label class="form-label" for="situacao">Situação</label><select class="form-select" id="situacao" name="situacao"><option value="">Todos</option><option value="suspensos" {% if args.get('situacao') == 'suspensos' %}selected{% endif %}>Suspensos</option><option value="admins" {% if args.get('situacao') == 'admins' %}selected{% endif %}>Administradores</option></select></div>
+  <div class="col-6 col-md-2"><button class="btn btn-primary w-100" type="submit">Buscar</button></div>
+</div></form>
+<div class="card"><div class="table-responsive"><table class="table table-hover align-middle table-responsive-cards">
+  <thead><tr><th>Usuário</th><th>Perfis</th><th>Cadastro</th><th>Último acesso</th><th>Situação</th></tr></thead>
+  <tbody>{% for u in pag.items %}<tr>
+    <td data-label="Usuário"><a class="fw-semibold" href="{{ url_for('admin.usuario', uid=u.id) }}">{{ u.nome }}</a><small class="d-block text-muted">{{ u.email }}</small></td>
+    <td data-label="Perfis" class="small">{{ u.lista_papeis|join(', ') or '—' }}{% if u.is_admin %} <span class="badge bg-green-dark">admin</span>{% endif %}{% if u.is_demo %} <span class="badge badge-demo">demo</span>{% endif %}</td>
+    <td data-label="Cadastro">{{ u.created_at|data_br }}</td>
+    <td data-label="Último acesso">{{ u.ultimo_login|datahora_br if u.ultimo_login else '—' }}</td>
+    <td data-label="Situação">{% if u.ativo %}<span class="badge badge-soft-green">Ativo</span>{% else %}<span class="badge badge-soft-red">Suspenso</span>{% endif %}</td>
+  </tr>{% endfor %}</tbody></table></div></div>
+{{ m.pagination(pag, 'admin.usuarios') }}
+{% endblock %}

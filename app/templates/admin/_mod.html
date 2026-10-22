@@ -1,0 +1,8 @@
+{% import "_macros.html" as m with context %}
+{% macro moderar(tipo, oid, removido) %}
+<form class="d-inline-flex gap-1" method="post" action="{{ url_for('admin.moderar', tipo=tipo, oid=oid) }}" data-confirm="{{ 'Restaurar' if removido else 'Remover' }} este conteúdo?">
+  {{ m.csrf() }}
+  {% if removido %}<button class="btn btn-sm btn-outline-primary" name="acao" value="restaurar" type="submit">Restaurar</button>
+  {% else %}<input class="form-control form-control-sm" name="motivo" placeholder="Motivo" aria-label="Motivo da remoção" style="max-width: 160px"><button class="btn btn-sm btn-outline-danger" name="acao" value="remover" type="submit">Remover</button>{% endif %}
+</form>
+{% endmacro %}

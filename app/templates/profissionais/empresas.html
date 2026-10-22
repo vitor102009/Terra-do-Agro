@@ -1,0 +1,26 @@
+{% extends "layouts/app.html" %}
+{% block title %}Empresas e lojas{% endblock %}
+{% block content %}
+{% call m.page_head('Empresas, lojas e fornecedores', 'Casas agropecuárias, fornecedores de insumos, máquinas, transporte e assistência técnica.', back=url_for('profissionais.index')) %}
+  <a class="btn btn-primary" href="{{ url_for('conta.empresa') }}"><i class="bi bi-shop" aria-hidden="true"></i>Perfil da minha empresa</a>
+{% endcall %}
+<form class="filters" method="get">
+  <div class="row g-2 align-items-end">
+    <div class="col-12 col-md-5"><label class="form-label" for="q">Buscar</label><input class="form-control" id="q" name="q" value="{{ args.get('q', '') }}"></div>
+    <div class="col-6 col-md-4"><label class="form-label" for="tipo">Tipo</label><select class="form-select" id="tipo" name="tipo"><option value="">Todos</option>{% for k, r in tipos.items() %}<option value="{{ k }}" {% if args.get('tipo') == k %}selected{% endif %}>{{ r }}</option>{% endfor %}</select></div>
+    <div class="col-3 col-md-1"><label class="form-label" for="uf">UF</label><select class="form-select" id="uf" name="uf"><option value="">—</option>{% for u in ufs %}<option {% if args.get('uf') == u %}selected{% endif %}>{{ u }}</option>{% endfor %}</select></div>
+    <div class="col-3 col-md-2"><button class="btn btn-primary w-100" type="submit">Buscar</button></div>
+  </div>
+</form>
+<div class="row g-3">
+  {% for emp in pag.items %}
+  <div class="col-md-6 col-xl-4"><div class="card listing-card"><div class="card-body">
+    <h2 class="h6 mb-0"><a class="text-reset stretched-link" href="{{ url_for('profissionais.empresa', eid=emp.id) }}">{{ emp.nome_fantasia }}</a></h2>
+    <div class="small text-muted">{{ tipos.get(emp.tipo) }}</div>
+    <div class="meta mt-2"><i class="bi bi-geo-alt" aria-hidden="true"></i> {{ emp.municipio }}/{{ emp.uf }}</div>
+    {% if emp.descricao %}<p class="small mt-2 mb-0 text-muted">{{ emp.descricao|truncate(140) }}</p>{% endif %}
+  </div></div></div>
+  {% else %}<div class="col-12"><div class="card">{{ m.empty('bi-shop', 'Nenhuma empresa encontrada') }}</div></div>{% endfor %}
+</div>
+{{ m.pagination(pag, 'profissionais.empresas') }}
+{% endblock %}

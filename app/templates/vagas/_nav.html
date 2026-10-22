@@ -1,0 +1,7 @@
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item"><a class="nav-link {% if request.endpoint == 'vagas.index' %}active{% endif %}" href="{{ url_for('vagas.index') }}">Vagas abertas</a></li>
+  <li class="nav-item"><a class="nav-link {% if request.endpoint == 'vagas.minhas_candidaturas' %}active{% endif %}" href="{{ url_for('vagas.minhas_candidaturas') }}">Minhas candidaturas</a></li>
+  <li class="nav-item"><a class="nav-link {% if request.endpoint == 'vagas.minhas_vagas' %}active{% endif %}" href="{{ url_for('vagas.minhas_vagas') }}">Vagas que publiquei</a></li>
+  <li class="nav-item"><a class="nav-link {% if request.endpoint == 'vagas.trabalhadores' %}active{% endif %}" href="{{ url_for('vagas.trabalhadores') }}">Trabalhadores disponíveis</a></li>
+  <li class="nav-item"><a class="nav-link {% if request.endpoint == 'vagas.meu_perfil' %}active{% endif %}" href="{{ url_for('vagas.meu_perfil') }}">Meu perfil de trabalhador</a></li>
+</ul>

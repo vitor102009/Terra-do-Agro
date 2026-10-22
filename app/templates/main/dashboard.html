@@ -1,0 +1,298 @@
+{% extends "layouts/app.html" %}
+{% block title %}Painel{% endblock %}
+{% block content %}
+<section class="hero-dash mb-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 position-relative" style="z-index: 1">
+    <div>
+      <h1>Olá, {{ current_user.primeiro_nome }}!</h1>
+      <div class="gold-rule"></div>
+      {% if propriedade_atual %}
+      <div class="meta"><i class="bi bi-geo-alt text-gold me-1" aria-hidden="true"></i>{{ propriedade_atual.nome }} · {{ propriedade_atual.municipio }}/{{ propriedade_atual.uf }} · {{ propriedade_atual.atividade_label }}</div>
+      <div class="meta mt-1">Período: {{ d.inicio|data_br }} a {{ d.fim|data_br }}</div>
+      {% else %}
+      <div class="meta">Bem-vindo ao Terra do Agro.</div>
+      {% endif %}
+    </div>
+    {% if propriedade_atual %}
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+      <form method="get" class="d-flex gap-2 align-items-center">
+        <label for="periodo" class="visually-hidden">Período</label>
+        <select id="periodo" name="periodo" class="form-select form-select-sm" data-autosubmit>
+          {% for k, rot in periodos.items() %}<option value="{{ k }}" {% if k == periodo %}selected{% endif %}>{{ rot }}</option>{% endfor %}
+        </select>
+      </form>
+      {% if pode('editar') %}
+      <div class="dropdown">
+        <button class="btn btn-gold btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-plus-lg" aria-hidden="true"></i>Registrar</button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><a class="dropdown-item" href="{{ url_for('animais.novo') }}"><i class="bi bi-tag me-2" aria-hidden="true"></i>Animal</a></li>
+          <li><a class="dropdown-item" href="{{ url_for('pesagens.nova') }}"><i class="bi bi-speedometer me-2" aria-hidden="true"></i>Pesagem</a></li>
+          <li><a class="dropdown-item" href="{{ url_for('saude.novo') }}"><i class="bi bi-shield-plus me-2" aria-hidden="true"></i>Vacinação ou tratamento</a></li>
+          <li><a class="dropdown-item" href="{{ url_for('reproducao.novo') }}"><i class="bi bi-gender-female me-2" aria-hidden="true"></i>Evento reprodutivo</a></li>
+          {% if pode('financeiro') %}
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item" href="{{ url_for('financeiro.novo', tipo='receita') }}"><i class="bi bi-arrow-down-circle me-2" aria-hidden="true"></i>Receita</a></li>
+          <li><a class="dropdown-item" href="{{ url_for('financeiro.novo', tipo='despesa') }}"><i class="bi bi-arrow-up-circle me-2" aria-hidden="true"></i>Despesa</a></li>
+          {% endif %}
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item" href="{{ url_for('notificacoes.nova_tarefa') }}"><i class="bi bi-check2-square me-2" aria-hidden="true"></i>Tarefa</a></li>
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+{% if not propriedade_atual %}
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card h-100"><div class="card-body p-4">
+      <h2 class="h4">Comece pela sua propriedade</h2>
+      <p class="text-muted">Para usar a gestão do rebanho, financeiro e relatórios, cadastre uma propriedade. Se você trabalha em uma propriedade de outra pessoa, peça ao responsável para adicionar seu e-mail como colaborador.</p>
+      <a class="btn btn-primary" href="{{ url_for('propriedades.nova') }}"><i class="bi bi-plus-lg" aria-hidden="true"></i>Cadastrar propriedade</a>
+    </div></div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6 small-caps text-muted">Explore a plataforma</h2>
+      <div class="list-group list-group-flush">
+        <a class="list-group-item list-group-item-action px-0" href="{{ url_for('marketplace.index') }}"><i class="bi bi-shop me-2 text-gold" aria-hidden="true"></i>Marketplace</a>
+        <a class="list-group-item list-group-item-action px-0" href="{{ url_for('profissionais.index') }}"><i class="bi bi-person-badge me-2 text-gold" aria-hidden="true"></i>Profissionais do Agro</a>
+        <a class="list-group-item list-group-item-action px-0" href="{{ url_for('vagas.index') }}"><i class="bi bi-briefcase me-2 text-gold" aria-hidden="true"></i>Vagas no campo</a>
+        <a class="list-group-item list-group-item-action px-0" href="{{ url_for('comunidade.index') }}"><i class="bi bi-people me-2 text-gold" aria-hidden="true"></i>Grupos e comunidade</a>
+        <a class="list-group-item list-group-item-action px-0" href="{{ url_for('conta.index') }}"><i class="bi bi-person-gear me-2 text-gold" aria-hidden="true"></i>Ampliar meu perfil</a>
+      </div>
+    </div></div>
+  </div>
+</div>
+{% else %}
+
+{% if d.total_animais == 0 and not d.get('tem_lancamentos') %}
+<div class="card mb-4"><div class="card-body d-flex flex-wrap align-items-center gap-3">
+  <i class="bi bi-flag fs-2 text-gold" aria-hidden="true"></i>
+  <div class="flex-grow-1">
+    <h2 class="h5 mb-1">A propriedade ainda não tem registros</h2>
+    <p class="text-muted mb-0">Os indicadores e gráficos são calculados a partir do que você cadastrar. Comece pelos lotes, animais ou lançamentos financeiros.</p>
+  </div>
+  {% if pode('editar') %}
+  <div class="d-flex flex-wrap gap-2">
+    {% if not d.tem_lotes %}<a class="btn btn-outline-primary" href="{{ url_for('lotes.novo') }}">Criar lote</a>{% endif %}
+    <a class="btn btn-primary" href="{{ url_for('animais.novo') }}">Cadastrar animal</a>
+    {% if pode('financeiro') %}<a class="btn btn-outline-primary" href="{{ url_for('financeiro.novo', tipo='despesa') }}">Lançar despesa</a>{% endif %}
+  </div>
+  {% endif %}
+</div></div>
+{% endif %}
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-xl-3"><div class="card kpi">
+    <div class="label"><i class="bi bi-tags" aria-hidden="true"></i>Total de animais</div>
+    <div class="value">{{ d.total_animais|numero }}</div>
+    <div class="hint">ativos na propriedade</div>
+    <a class="stretched-link" href="{{ url_for('animais.index') }}" aria-label="Ver rebanho"></a>
+  </div></div>
+  {% if pode('financeiro') %}
+  <div class="col-6 col-xl-3"><div class="card kpi">
+    <div class="label"><i class="bi bi-arrow-down-circle" aria-hidden="true"></i>Receitas do período</div>
+    <div class="value value-pos">{{ d.receitas|moeda }}</div>
+    <div class="hint">por data de competência</div>
+    <a class="stretched-link" href="{{ url_for('financeiro.index', tipo='receita', inicio=d.inicio, fim=d.fim) }}" aria-label="Ver receitas"></a>
+  </div></div>
+  <div class="col-6 col-xl-3"><div class="card kpi kpi-danger">
+    <div class="label"><i class="bi bi-arrow-up-circle" aria-hidden="true"></i>Despesas do período</div>
+    <div class="value value-neg">{{ d.despesas|moeda }}</div>
+    <div class="hint">por data de competência</div>
+    <a class="stretched-link" href="{{ url_for('financeiro.index', tipo='despesa', inicio=d.inicio, fim=d.fim) }}" aria-label="Ver despesas"></a>
+  </div></div>
+  <div class="col-6 col-xl-3"><div class="card kpi kpi-dark">
+    <div class="label"><i class="bi bi-graph-up" aria-hidden="true"></i>Resultado do período</div>
+    <div class="value">{{ d.resultado|moeda }}</div>
+    <div class="hint">Caixa no período: {{ d.caixa_periodo|moeda }}</div>
+    <a class="stretched-link" href="{{ url_for('financeiro.fluxo') }}" aria-label="Ver fluxo de caixa"></a>
+  </div></div>
+  {% else %}
+  <div class="col-6 col-xl-9"><div class="card kpi"><div class="label"><i class="bi bi-lock" aria-hidden="true"></i>Financeiro</div><div class="hint mt-2">Seu acesso a esta propriedade não inclui informações financeiras.</div></div></div>
+  {% endif %}
+</div>
+
+<div class="row g-3 mb-4">
+  {% set kp = [
+    ('bi-heart-pulse', 'Vacas paridas', d.repro.paridas, url_for('animais.index', reprodutiva='parida'), ''),
+    ('bi-hourglass-split', 'Vacas gestantes', d.repro.gestantes, url_for('animais.index', reprodutiva='gestante'), ''),
+    ('bi-circle', 'Vacas vazias', d.repro.vazias, url_for('animais.index', reprodutiva='vazia'), ''),
+    ('bi-shield-exclamation', 'Vacinas próximas (15 dias)', d.vacinas_proximas|length, url_for('saude.index', aba='agenda'), 'kpi-gold'),
+    ('bi-check2-square', 'Tarefas pendentes', d.tarefas|length, url_for('notificacoes.agenda'), ''),
+    ('bi-exclamation-triangle', 'Alertas importantes', d.alertas, '#alertas', 'kpi-danger' if d.alertas else ''),
+  ] %}
+  {% for icon, label, valor, link, cls in kp %}
+  <div class="col-6 col-md-4 col-xl-2"><div class="card kpi {{ cls }}">
+    <div class="label"><i class="bi {{ icon }}" aria-hidden="true"></i><span>{{ label }}</span></div>
+    <div class="value">{{ valor }}</div>
+    <a class="stretched-link" href="{{ link }}" aria-label="{{ label }}"></a>
+  </div></div>
+  {% endfor %}
+</div>
+
+<div class="row g-3">
+  <div class="col-xl-8">
+    {% if pode('financeiro') %}
+    <div class="card mb-3">
+      <div class="card-header"><h2>Receitas e despesas · últimos 12 meses</h2><a class="small" href="{{ url_for('financeiro.fluxo') }}">Fluxo de caixa</a></div>
+      <div class="card-body">
+        {% if d.serie.tem_dados %}
+        <div class="chart-box"><canvas aria-label="Gráfico de receitas e despesas por mês" role="img" data-chart='{{ {"type": "bar", "money": true, "labels": d.serie.labels, "datasets": [
+          {"label": "Receitas", "data": d.serie.receitas, "color": "#137536"},
+          {"label": "Despesas", "data": d.serie.despesas, "color": "#B42318"},
+          {"label": "Resultado acumulado", "data": d.serie.acumulado, "color": "#D1A33A", "type": "line"}]}|tojson }}'></canvas></div>
+        {% else %}{{ m.empty('bi-bar-chart', 'Sem lançamentos nos últimos 12 meses', 'Registre receitas e despesas para acompanhar a evolução do resultado.', url_for('financeiro.novo', tipo='despesa') if pode('editar') else None, 'Novo lançamento') }}{% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="row g-3 mb-3">
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-header"><h2>Animais por categoria</h2></div>
+          <div class="card-body">
+            {% if d.por_categoria %}
+            <div class="chart-box sm"><canvas role="img" aria-label="Animais por categoria" data-chart='{{ {"type": "bar", "horizontal": true, "labels": d.por_categoria|map(attribute=0)|list, "datasets": [{"label": "Animais", "data": d.por_categoria|map(attribute=1)|list, "color": "#0E5E2A"}]}|tojson }}'></canvas></div>
+            {% else %}{{ m.empty('bi-tags', 'Nenhum animal ativo') }}{% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-header"><h2>Distribuição do rebanho por lote</h2></div>
+          <div class="card-body">
+            {% if d.por_lote %}
+            <div class="chart-box sm"><canvas role="img" aria-label="Distribuição por lote" data-chart='{{ {"type": "doughnut", "labels": d.por_lote|map(attribute=0)|list, "datasets": [{"label": "Animais", "data": d.por_lote|map(attribute=1)|list}]}|tojson }}'></canvas></div>
+            {% else %}{{ m.empty('bi-diagram-3', 'Nenhum animal ativo') }}{% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-header"><h2>Evolução das pesagens</h2><a class="small" href="{{ url_for('pesagens.index') }}">Ver todas</a></div>
+          <div class="card-body">
+            {% if d.pesagens.tem_dados %}
+            <div class="chart-box sm"><canvas role="img" aria-label="Peso médio mensal das pesagens individuais" data-chart='{{ {"type": "line", "unit": "kg", "labels": d.pesagens.labels, "datasets": [{"label": "Peso médio (kg)", "data": d.pesagens.medias, "color": "#0E5E2A"}]}|tojson }}'></canvas></div>
+            <p class="small text-muted mb-0 mt-2">Média mensal das pesagens individuais registradas.</p>
+            {% else %}{{ m.empty('bi-speedometer', 'Sem pesagens nos últimos 12 meses', None, url_for('pesagens.nova') if pode('editar') else None, 'Registrar pesagem') }}{% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        {% if pode('financeiro') %}
+        <div class="card h-100">
+          <div class="card-header"><h2>Despesas por categoria</h2></div>
+          <div class="card-body">
+            {% if d.despesas_categoria %}
+            <div class="chart-box sm"><canvas role="img" aria-label="Despesas por categoria no período" data-chart='{{ {"type": "doughnut", "money": true, "labels": d.despesas_categoria|map(attribute=0)|list, "datasets": [{"label": "Despesas", "data": d.despesas_categoria|map(attribute=1)|map("float")|list}]}|tojson }}'></canvas></div>
+            {% else %}{{ m.empty('bi-pie-chart', 'Sem despesas no período') }}{% endif %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header"><h2>Indicadores produtivos</h2><a class="small" href="{{ url_for('relatorios.index') }}">Relatórios</a></div>
+      <div class="card-body">
+        <dl class="dl-grid">
+          <div><dt>GMD médio (12 meses)</dt><dd>{% if d.gmd_medio[0] is not none %}{{ d.gmd_medio[0]|numero(3) }} kg/dia <small class="text-muted">({{ d.gmd_medio[1] }} animais)</small>{% else %}<span class="text-muted">Dados insuficientes</span>{% endif %}</dd></div>
+          <div><dt>Taxa de prenhez</dt><dd>{% if d.repro.taxa_prenhez is not none %}{{ d.repro.taxa_prenhez|numero(1) }}%{% else %}<span class="text-muted">Dados insuficientes</span>{% endif %}</dd></div>
+          <div><dt>Aguardando diagnóstico</dt><dd>{{ d.repro.servidas }}</dd></div>
+          {% if pode('financeiro') %}<div><dt>Saldo de caixa acumulado</dt><dd class="{{ 'value-neg' if d.saldo_caixa < 0 else '' }}">{{ d.saldo_caixa|moeda }}</dd></div>{% endif %}
+        </dl>
+        <p class="small text-muted mb-0 mt-3">GMD exige ao menos duas pesagens individuais com intervalo mínimo de 7 dias. Taxa de prenhez = gestantes ÷ (vazias + cobertas + gestantes).</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-4">
+    <div class="card mb-3" id="clima-card" data-clima-url="{{ url_for('clima.resumo') }}">
+      <div class="card-header"><h2><i class="bi bi-cloud-sun text-gold me-1" aria-hidden="true"></i>Clima</h2><a class="small" href="{{ url_for('clima.clima') }}">Previsão completa</a></div>
+      <div class="card-body" data-clima-body>
+        <div class="d-flex align-items-center gap-2 text-muted"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span>Carregando previsão…</div>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header"><h2><i class="bi bi-graph-up-arrow text-gold me-1" aria-hidden="true"></i>Cotações</h2><a class="small" href="{{ url_for('clima.cotacoes') }}">Ver todas</a></div>
+      <div class="card-body">
+        {% if cotacoes %}
+        <ul class="list-unstyled mb-0">
+          {% for c in cotacoes %}
+          <li class="d-flex justify-content-between py-2 border-bottom">
+            <span><span class="fw-semibold">{{ c.produto }}</span><small class="d-block text-muted">{{ c.praca }} · {{ c.data_referencia|data_br }} · {{ c.fonte }}</small></span>
+            <span class="fw-bold text-nowrap">{{ c.valor|moeda }}<small class="d-block text-muted text-end fw-normal">{{ c.unidade }}</small></span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-muted small mb-0">Nenhuma cotação registrada. As cotações só aparecem quando cadastradas a partir de uma fonte identificada, com data de referência.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card mb-3" id="alertas">
+      <div class="card-header"><h2><i class="bi bi-exclamation-triangle text-gold me-1" aria-hidden="true"></i>Alertas</h2></div>
+      <div class="card-body">
+        {% set total_alertas = d.vacinas_vencidas|length + d.vacinas_proximas|length + d.estoque_baixo|length + d.insumos_vencendo|length + (d.contas_vencidas|length if pode('financeiro') else 0) %}
+        {% if total_alertas == 0 %}
+        <p class="text-muted small mb-0"><i class="bi bi-check-circle text-success me-1" aria-hidden="true"></i>Nenhum alerta no momento.</p>
+        {% else %}
+        <ul class="activity">
+          {% for ev in d.vacinas_vencidas[:5] %}
+          <li><span class="ico" style="background:#FDECEA;color:#B42318"><i class="bi bi-shield-exclamation" aria-hidden="true"></i></span><div><a href="{{ url_for('saude.index', aba='agenda') }}">{{ ev.produto }} atrasada</a><div class="when">{{ ev.alvo }} · prevista {{ ev.proxima_data|data_br }}</div></div></li>
+          {% endfor %}
+          {% for ev in d.vacinas_proximas[:5] %}
+          <li><span class="ico"><i class="bi bi-shield-plus" aria-hidden="true"></i></span><div><a href="{{ url_for('saude.index', aba='agenda') }}">{{ ev.produto }}</a><div class="when">{{ ev.alvo }} · {{ ev.proxima_data|data_br }}</div></div></li>
+          {% endfor %}
+          {% for i in d.estoque_baixo[:5] %}
+          <li><span class="ico"><i class="bi bi-box-seam" aria-hidden="true"></i></span><div><a href="{{ url_for('insumos.detalhe', iid=i.id) }}">Estoque baixo: {{ i.nome }}</a><div class="when">{{ i.quantidade|numero(2) }} {{ i.unidade }} (mínimo {{ i.quantidade_minima|numero(2) }})</div></div></li>
+          {% endfor %}
+          {% for i in d.insumos_vencendo[:5] %}
+          <li><span class="ico"><i class="bi bi-calendar-x" aria-hidden="true"></i></span><div><a href="{{ url_for('insumos.detalhe', iid=i.id) }}">Validade: {{ i.nome }}</a><div class="when">vence {{ i.validade|data_br }}</div></div></li>
+          {% endfor %}
+          {% if pode('financeiro') %}{% for l in d.contas_vencidas[:5] %}
+          <li><span class="ico" style="background:#FDECEA;color:#B42318"><i class="bi bi-cash" aria-hidden="true"></i></span><div><a href="{{ url_for('financeiro.detalhe', lid=l.id) }}">{{ 'Conta a pagar' if l.tipo == 'despesa' else 'Conta a receber' }} vencida</a><div class="when">{{ l.descricao }} · {{ l.saldo|moeda }} · {{ l.vencimento|data_br }}</div></div></li>
+          {% endfor %}{% endif %}
+        </ul>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header"><h2>Atividades recentes</h2></div>
+      <div class="card-body">
+        {% if d.atividades %}
+        <ul class="activity">
+          {% set icones = {'animal': 'bi-tag', 'pesagem': 'bi-speedometer', 'sanitario': 'bi-shield-plus', 'reproducao': 'bi-gender-female',
+             'financeiro': 'bi-cash-coin', 'insumo': 'bi-box-seam', 'lote': 'bi-diagram-3', 'tarefa': 'bi-check2-square', 'servico': 'bi-clipboard-check', 'propriedade': 'bi-house-door'} %}
+          {% for a in d.atividades %}
+          <li>
+            <span class="ico"><i class="bi {{ icones.get(a.acao.split('.')[0], 'bi-dot') }}" aria-hidden="true"></i></span>
+            <div class="min-w-0">
+              {% if a.link %}<a href="{{ a.link }}">{{ a.descricao }}</a>{% else %}{{ a.descricao }}{% endif %}
+              <div class="when">{{ a.user.nome if a.user else 'Sistema' }} · {{ a.created_at|tempo_relativo }}</div>
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}<p class="text-muted small mb-0">As atividades registradas na propriedade aparecerão aqui.</p>{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script src="{{ url_for('static', filename='js/clima.js') }}"></script>
+{% endblock %}

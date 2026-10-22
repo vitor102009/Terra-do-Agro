@@ -1,0 +1,30 @@
+{% extends "layouts/app.html" %}
+{% block title %}Relatórios{% endblock %}
+{% block content %}
+{{ m.page_head('Relatórios', 'Gerados a partir dos dados de ' ~ propriedade_atual.nome ~ ', conforme suas permissões.') }}
+<form class="filters" method="get" id="filtros-relatorio">
+  <div class="row g-2 align-items-end">
+    <div class="col-6 col-md-3"><label class="form-label" for="inicio">Data inicial</label><input class="form-control" type="date" id="inicio" name="inicio" value="{{ inicio.isoformat() }}"></div>
+    <div class="col-6 col-md-3"><label class="form-label" for="fim">Data final</label><input class="form-control" type="date" id="fim" name="fim" value="{{ fim.isoformat() }}"></div>
+    <div class="col-12 col-md-3"><label class="form-label" for="lote">Lote (quando aplicável)</label><select class="form-select" id="lote" name="lote"><option value="">Todos</option>{% for l in lotes %}<option value="{{ l.id }}">{{ l.nome }}</option>{% endfor %}</select></div>
+    <div class="col-12 col-md-3"><p class="small text-muted mb-1">Escolha o período e clique no relatório.</p></div>
+  </div>
+</form>
+{% set grupos = relatorios.values()|map(attribute='grupo')|unique|list %}
+<div class="row g-3">
+  {% for grupo in grupos %}
+  <div class="col-lg-4">
+    <div class="card h-100"><div class="card-header"><h2>{{ grupo }}</h2></div>
+      <div class="list-group list-group-flush">
+        {% for k, r in relatorios.items() if r.grupo == grupo %}
+        <button type="submit" form="filtros-relatorio" formaction="{{ url_for('relatorios.ver', tipo=k) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+          {{ r.titulo }}<i class="bi bi-chevron-right text-muted" aria-hidden="true"></i></button>
+        {% endfor %}
+        {% if grupo == 'Financeiro' %}<a class="list-group-item list-group-item-action" href="{{ url_for('relatorios.custos') }}">Painel de custos de produção</a>{% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<p class="small text-muted mt-3">Todos os relatórios podem ser exportados em CSV (compatível com Excel e LibreOffice) e impressos. Para PDF, use "Imprimir" e escolha "Salvar como PDF" no navegador.</p>
+{% endblock %}

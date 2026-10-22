@@ -1,0 +1,21 @@
+{# Formulário para nova publicação. Usa `grupo` (opcional) e `tipos`. #}
+<div class="card mb-3"><div class="card-body">
+  <form method="post" action="{{ url_for('feed.publicar') }}" enctype="multipart/form-data">
+    {{ m.csrf() }}{% if grupo %}<input type="hidden" name="grupo_id" value="{{ grupo.id }}">{% endif %}
+    <div class="d-flex gap-3">
+      {{ m.avatar(current_user) }}
+      <div class="flex-grow-1">
+        <label class="visually-hidden" for="novo-post">Nova publicação</label>
+        <textarea class="form-control" id="novo-post" name="texto" rows="3" maxlength="5000" placeholder="{{ 'Compartilhe com o grupo' if grupo else 'Compartilhe uma experiência, dica ou novidade do campo' }}"></textarea>
+        <div class="d-flex flex-wrap gap-2 mt-2 align-items-center">
+          <label class="btn btn-sm btn-outline-primary mb-0" for="post-midia"><i class="bi bi-image" aria-hidden="true"></i>Foto ou vídeo</label>
+          <input class="visually-hidden" type="file" id="post-midia" name="midia" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime">
+          <label class="visually-hidden" for="post-tipo">Tipo de publicação</label>
+          <select class="form-select form-select-sm w-auto" id="post-tipo" name="tipo">{% for k, r in tipos.items() %}<option value="{{ k }}">{{ r }}</option>{% endfor %}</select>
+          <button class="btn btn-primary btn-sm ms-auto" type="submit">Publicar</button>
+        </div>
+        <div class="form-text">Imagens até 5 MB; vídeos MP4, WEBM ou MOV até 50 MB. Conteúdo de venda deve ser marcado como "Comercial".</div>
+      </div>
+    </div>
+  </form>
+</div></div>

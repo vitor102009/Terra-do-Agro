@@ -1,0 +1,27 @@
+{% extends "layouts/app.html" %}
+{% block title %}Suporte{% endblock %}
+{% block content %}
+{{ m.page_head('Suporte e solicitações', 'Dúvidas, problemas técnicos e pedidos relacionados aos seus dados pessoais (LGPD).') }}
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="card"><div class="card-header"><h2>Novo chamado</h2></div><div class="card-body">
+      {{ m.form_errors() }}
+      <form method="post" novalidate>{{ m.csrf() }}
+        <div class="row g-3">
+          {{ m.select('tipo', 'Tipo', tipos, required=True, empty=None) }}
+          {{ m.input('assunto', 'Assunto', required=True) }}
+          {{ m.textarea('mensagem', 'Mensagem', required=True, rows=5) }}
+          <div class="col-12"><button class="btn btn-primary w-100" type="submit">Enviar</button></div>
+        </div>
+      </form>
+    </div></div>
+  </div>
+  <div class="col-lg-7">
+    <div class="card"><div class="card-header"><h2>Meus chamados</h2></div>
+      {% if chamados %}<div class="list-group list-group-flush">{% for ch in chamados %}
+        <a class="list-group-item list-group-item-action d-flex justify-content-between" href="{{ url_for('conta.chamado', cid=ch.id) }}"><span>{{ ch.assunto }}<small class="d-block text-muted">{{ tipos.get(ch.tipo) }} · {{ ch.created_at|data_br }}</small></span>{{ m.situacao_badge(ch.status, ch.status|capitalize) }}</a>
+      {% endfor %}</div>{% else %}<div class="card-body small text-muted">Nenhum chamado aberto.</div>{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

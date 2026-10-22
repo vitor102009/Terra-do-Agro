@@ -1,0 +1,56 @@
+{% extends "layouts/app.html" %}
+{% block title %}Lotes e pastagens{% endblock %}
+{% block content %}
+{% call m.page_head('Lotes e pastagens', propriedade_atual.nome) %}
+  {% if pode('editar') %}
+  <a class="btn btn-outline-primary" href="{{ url_for('lotes.nova_pastagem') }}"><i class="bi bi-plus-lg" aria-hidden="true"></i>Pastagem</a>
+  <a class="btn btn-primary" href="{{ url_for('lotes.novo') }}"><i class="bi bi-plus-lg" aria-hidden="true"></i>Novo lote</a>
+  {% endif %}
+{% endcall %}
+<ul class="nav nav-tabs mb-3" role="tablist">
+  <li class="nav-item"><a class="nav-link {% if aba == 'lotes' %}active{% endif %}" href="{{ url_for('lotes.index', aba='lotes') }}">Lotes ({{ lotes|length }})</a></li>
+  <li class="nav-item"><a class="nav-link {% if aba == 'pastagens' %}active{% endif %}" href="{{ url_for('lotes.index', aba='pastagens') }}">Pastagens ({{ pastagens|length }})</a></li>
+</ul>
+
+{% if aba == 'pastagens' %}
+<div class="card">
+  {% if pastagens %}
+  <div class="table-responsive"><table class="table table-hover align-middle table-responsive-cards">
+    <thead><tr><th>Pastagem</th><th class="num">Área</th><th>Forrageira</th><th>Condição</th><th>Lotes</th><th class="num">Lotação</th></tr></thead>
+    <tbody>{% for p in pastagens %}{% set lp = lot_past[p.id] %}
+      <tr>
+        <td data-label="Pastagem"><a class="fw-semibold" href="{{ url_for('lotes.pastagem', pid_=p.id) }}">{{ p.nome }}</a>{% if not p.ativa %} <span class="badge badge-soft-gray">Inativa</span>{% endif %}</td>
+        <td class="num" data-label="Área">{{ (p.area_ha|numero(2) ~ ' ha') if p.area_ha is not none else '—' }}</td>
+        <td data-label="Forrageira">{{ p.forrageira or '—' }}</td>
+        <td data-label="Condição">{{ condicoes.get(p.condicao, '—') }}</td>
+        <td data-label="Lotes">{{ p.lotes|selectattr('ativo')|map(attribute='nome')|join(', ') or '—' }}</td>
+        <td class="num" data-label="Lotação">{% if lp.ok %}{{ lp.ua_ha|numero(2) }} UA/ha{% else %}<small class="text-muted">{{ lp.motivo }}</small>{% endif %}</td>
+      </tr>{% endfor %}
+    </tbody></table></div>
+  <div class="card-body pt-0"><p class="small text-muted mb-0">Lotação = peso vivo total dos animais dos lotes na pastagem ÷ 450 kg (1 UA) ÷ área. Só é exibida quando todos os animais têm pesagem e a área está informada. Não é uma estimativa de capacidade de suporte.</p></div>
+  {% else %}{{ m.empty('bi-flower2', 'Nenhuma pastagem cadastrada', 'Cadastre as áreas de pastejo para associar lotes e registrar o manejo.', url_for('lotes.nova_pastagem') if pode('editar') else None, 'Cadastrar pastagem') }}{% endif %}
+</div>
+{% else %}
+{% if sem_lote %}<div class="notice mb-3">{{ sem_lote }} animal(is) ativo(s) sem lote. Abra um lote e use "Adicionar animais" para organizá-los.</div>{% endif %}
+<div class="row g-3">
+  {% for l in lotes %}{% set r = resumo[l.id] %}
+  <div class="col-md-6 col-xl-4">
+    <div class="card h-100{% if not l.ativo %} opacity-75{% endif %}"><div class="card-body">
+      <div class="d-flex justify-content-between align-items-start">
+        <h2 class="h5 mb-1"><a class="text-reset stretched-link" href="{{ url_for('lotes.detalhe', lid=l.id) }}">{{ l.nome }}</a></h2>
+        {% if not l.ativo %}<span class="badge badge-soft-gray">Inativo</span>{% endif %}
+      </div>
+      <div class="small text-muted">{{ l.finalidade or 'Sem finalidade definida' }}{% if l.pastagem %} · {{ l.pastagem.nome }}{% endif %}</div>
+      <dl class="dl-grid mt-3">
+        <div><dt>Animais</dt><dd>{{ r.qtd }}</dd></div>
+        <div><dt>Peso médio</dt><dd>{{ (r.peso_medio|numero(1) ~ ' kg') if r.peso_medio is not none else '—' }}</dd></div>
+      </dl>
+      {% if r.sem_peso and r.qtd %}<div class="small text-muted mt-2">{{ r.sem_peso }} sem pesagem</div>{% endif %}
+    </div></div>
+  </div>
+  {% else %}
+  <div class="col-12"><div class="card">{{ m.empty('bi-diagram-3', 'Nenhum lote criado', 'Organize o rebanho em lotes para manejo, pesagem e controle de custos.', url_for('lotes.novo') if pode('editar') else None, 'Criar lote') }}</div></div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

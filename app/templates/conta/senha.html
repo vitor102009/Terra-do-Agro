@@ -1,0 +1,16 @@
+{% extends "layouts/app.html" %}
+{% block title %}Alterar senha{% endblock %}
+{% block content %}
+{{ m.page_head('Alterar senha', 'Ao salvar, as sessões abertas em outros aparelhos serão encerradas.', back=url_for('conta.index')) }}
+<div class="card" style="max-width: 520px"><div class="card-body">
+  {{ m.form_errors() }}
+  <form method="post" novalidate>{{ m.csrf() }}
+    <div class="row g-3">
+      {{ m.input('atual', 'Senha atual', type='password', required=True, attrs='autocomplete="current-password"', value='') }}
+      {{ m.input('senha', 'Nova senha', type='password', required=True, help='Mínimo de 8 caracteres, com letras e números.', attrs='autocomplete="new-password"', value='') }}
+      {{ m.input('confirmar', 'Confirmar nova senha', type='password', required=True, attrs='autocomplete="new-password"', value='') }}
+      <div class="col-12"><button class="btn btn-primary" type="submit">Alterar senha</button></div>
+    </div>
+  </form>
+</div></div>
+{% endblock %}

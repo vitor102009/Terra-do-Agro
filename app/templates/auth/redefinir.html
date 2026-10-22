@@ -1,0 +1,15 @@
+{% extends "layouts/auth.html" %}
+{% block title %}Nova senha{% endblock %}
+{% block auth %}
+<h1 class="mb-1">Criar nova senha</h1>
+<p class="text-muted mb-4">Depois de salvar, as sessões abertas em outros aparelhos serão encerradas.</p>
+{{ m.form_errors() }}
+<form method="post" novalidate data-loading>
+  {{ m.csrf() }}
+  <div class="row g-3">
+    {{ m.input('senha', 'Nova senha', type='password', required=True, help='Mínimo de 8 caracteres, com letras e números.', attrs='autocomplete="new-password" autofocus', value='') }}
+    {{ m.input('confirmar', 'Confirmar nova senha', type='password', required=True, attrs='autocomplete="new-password"', value='') }}
+    <div class="col-12"><button class="btn btn-primary w-100 btn-lg" type="submit">Salvar nova senha</button></div>
+  </div>
+</form>
+{% endblock %}

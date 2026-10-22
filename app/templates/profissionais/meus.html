@@ -1,0 +1,30 @@
+{% extends "layouts/app.html" %}
+{% block title %}Meus perfis profissionais{% endblock %}
+{% block content %}
+{% call m.page_head('Meus perfis profissionais', 'Você pode ter um perfil para cada atuação (por exemplo, veterinário e inseminador), na mesma conta.') %}
+  <a class="btn btn-outline-primary" href="{{ url_for('servicos.index', papel='profissional') }}"><i class="bi bi-inbox" aria-hidden="true"></i>Solicitações recebidas</a>
+  <a class="btn btn-primary" href="{{ url_for('profissionais.editar_perfil') }}"><i class="bi bi-plus-lg" aria-hidden="true"></i>Novo perfil</a>
+{% endcall %}
+<div class="row g-3">
+  {% for p in perfis %}{% set ver = verificacoes.get(p.id) %}
+  <div class="col-md-6 col-xl-4">
+    <div class="card h-100"><div class="card-body">
+      <div class="d-flex justify-content-between align-items-start">
+        <div><h2 class="h6 mb-0">{{ p.categoria.nome }}</h2><div class="small text-muted">{{ p.titulo }}</div></div>
+        {% if p.verificado %}<span class="badge badge-verified">Verificado</span>{% elif ver and ver.status == 'pendente' %}<span class="badge badge-soft-gold">Verificação em análise</span>{% else %}<span class="badge badge-soft-gray">Não verificado</span>{% endif %}
+      </div>
+      <div class="small mt-2">{{ 'Público' if p.publico else 'Oculto da busca' }} · {{ p.servicos|length }} serviço(s) · {{ p.total_avaliacoes }} avaliação(ões)</div>
+      {% if ver and ver.status == 'recusada' and not p.verificado %}<div class="small text-danger mt-1">Última verificação recusada: {{ ver.nota_admin or 'sem observação' }}</div>{% endif %}
+    </div>
+    <div class="card-footer bg-transparent d-flex flex-wrap gap-2">
+      <a class="btn btn-sm btn-outline-primary" href="{{ url_for('profissionais.perfil', perfil_id=p.id) }}">Ver</a>
+      <a class="btn btn-sm btn-outline-primary" href="{{ url_for('profissionais.editar_perfil', id=p.id) }}">Editar</a>
+      <a class="btn btn-sm btn-outline-primary" href="{{ url_for('profissionais.servicos', perfil_id=p.id) }}">Serviços</a>
+      {% if not p.verificado %}<a class="btn btn-sm btn-outline-primary" href="{{ url_for('profissionais.verificacao', perfil_id=p.id) }}">Verificação</a>{% endif %}
+    </div></div>
+  </div>
+  {% else %}
+  <div class="col-12"><div class="card">{{ m.empty('bi-person-badge', 'Você ainda não tem perfil profissional', 'Crie seu perfil para receber solicitações de atendimento e orçamento de produtores.', url_for('profissionais.editar_perfil'), 'Criar perfil') }}</div></div>
+  {% endfor %}
+</div>
+{% endblock %}

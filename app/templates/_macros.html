@@ -1,0 +1,176 @@
+{# Macros de formulário e componentes. Importar com: {% import "_macros.html" as m with context %}
+   Os formulários usam as variáveis de contexto `v` (valores) e `e` (erros). #}
+
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endmacro %}
+
+{% macro _val(name) %}{% if v is defined and v %}{{ v.get(name, '') if v.get(name) is not none else '' }}{% endif %}{% endmacro %}
+
+{% macro _err(name) %}{% if e is defined and e and e.get(name) %}<div class="invalid-feedback d-block" id="{{ name }}-erro">{{ e.get(name) }}</div>{% endif %}{% endmacro %}
+
+{% macro _inv(name) %}{% if e is defined and e and e.get(name) %} is-invalid{% endif %}{% endmacro %}
+
+{% macro _desc(name, help) %}{% set ids = [] %}{% if help %}{% set _ = ids.append(name ~ '-ajuda') %}{% endif %}{% if e is defined and e and e.get(name) %}{% set _ = ids.append(name ~ '-erro') %}{% endif %}{% if ids %} aria-describedby="{{ ids|join(' ') }}"{% endif %}{% endmacro %}
+
+{% macro input(name, label, type='text', required=False, help=None, placeholder='', col='col-12', attrs='', value=None, inputmode=None) %}
+<div class="{{ col }}">
+  <label class="form-label{% if required %} required{% endif %}" for="f-{{ name }}">{{ label }}</label>
+  <input type="{{ type }}" class="form-control{{ _inv(name) }}" id="f-{{ name }}" name="{{ name }}"
+         value="{% if value is not none %}{{ value }}{% else %}{{ _val(name) }}{% endif %}"
+         {% if required %}required{% endif %} {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}
+         {% if inputmode %}inputmode="{{ inputmode }}"{% endif %}{{ _desc(name, help) }} {{ attrs|safe }}>
+  {% if help %}<div class="form-text" id="{{ name }}-ajuda">{{ help }}</div>{% endif %}
+  {{ _err(name) }}
+</div>
+{% endmacro %}
+
+{% macro money(name, label, required=False, help=None, col='col-12 col-md-4') %}
+{{ input(name, label, required=required, help=help, col=col, placeholder='0,00', inputmode='decimal') }}
+{% endmacro %}
+
+{% macro number(name, label, required=False, help=None, col='col-12 col-md-4', placeholder='') %}
+{{ input(name, label, required=required, help=help, col=col, placeholder=placeholder, inputmode='decimal') }}
+{% endmacro %}
+
+{% macro textarea(name, label, required=False, help=None, rows=3, col='col-12', placeholder='') %}
+<div class="{{ col }}">
+  <label class="form-label{% if required %} required{% endif %}" for="f-{{ name }}">{{ label }}</label>
+  <textarea class="form-control{{ _inv(name) }}" id="f-{{ name }}" name="{{ name }}" rows="{{ rows }}"
+            {% if required %}required{% endif %} {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}{{ _desc(name, help) }}>{{ _val(name) }}</textarea>
+  {% if help %}<div class="form-text" id="{{ name }}-ajuda">{{ help }}</div>{% endif %}
+  {{ _err(name) }}
+</div>
+{% endmacro %}
+
+{% macro select(name, label, options, required=False, help=None, col='col-12', empty='Selecione', attrs='') %}
+{# options: dict {valor: rótulo} ou lista de pares #}
+{% set atual = (v.get(name) if v is defined and v else '')|string %}
+<div class="{{ col }}">
+  <label class="form-label{% if required %} required{% endif %}" for="f-{{ name }}">{{ label }}</label>
+  <select class="form-select{{ _inv(name) }}" id="f-{{ name }}" name="{{ name }}" {% if required %}required{% endif %}{{ _desc(name, help) }} {{ attrs|safe }}>
+    {% if empty is not none %}<option value="">{{ empty }}</option>{% endif %}
+    {% for valor, rotulo in (options.items() if options is mapping else options) %}
+      <option value="{{ valor }}" {% if atual == valor|string %}selected{% endif %}>{{ rotulo }}</option>
+    {% endfor %}
+  </select>
+  {% if help %}<div class="form-text" id="{{ name }}-ajuda">{{ help }}</div>{% endif %}
+  {{ _err(name) }}
+</div>
+{% endmacro %}
+
+{% macro uf(name='uf', label='Estado', required=True, col='col-12 col-md-3') %}
+{{ select(name, label, ufs, required=required, col=col, empty='UF') }}
+{% endmacro %}
+
+{% macro checkbox(name, label, help=None, col='col-12') %}
+<div class="{{ col }}">
+  <div class="form-check">
+    <input class="form-check-input" type="checkbox" value="1" id="f-{{ name }}" name="{{ name }}" {% if v is defined and v and v.get(name) %}checked{% endif %}>
+    <label class="form-check-label" for="f-{{ name }}">{{ label }}</label>
+  </div>
+  {% if help %}<div class="form-text">{{ help }}</div>{% endif %}
+  {{ _err(name) }}
+</div>
+{% endmacro %}
+
+{% macro checkgroup(name, label, options, col='col-12') %}
+{% set marcados = (v.get(name) if v is defined and v else []) or [] %}
+<fieldset class="{{ col }}">
+  <legend class="form-label fs-6">{{ label }}</legend>
+  <div class="d-flex flex-wrap gap-3">
+  {% for valor, rotulo in (options.items() if options is mapping else options) %}
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" name="{{ name }}" value="{{ valor }}" id="f-{{ name }}-{{ loop.index }}" {% if valor in marcados %}checked{% endif %}>
+      <label class="form-check-label" for="f-{{ name }}-{{ loop.index }}">{{ rotulo }}</label>
+    </div>
+  {% endfor %}
+  </div>
+  {{ _err(name) }}
+</fieldset>
+{% endmacro %}
+
+{% macro file(name, label, accept='', help=None, col='col-12', multiple=False) %}
+<div class="{{ col }}">
+  <label class="form-label" for="f-{{ name }}">{{ label }}</label>
+  <input class="form-control{{ _inv(name) }}" type="file" id="f-{{ name }}" name="{{ name }}" {% if accept %}accept="{{ accept }}"{% endif %} {% if multiple %}multiple{% endif %}{{ _desc(name, help) }}>
+  {% if help %}<div class="form-text" id="{{ name }}-ajuda">{{ help }}</div>{% endif %}
+  {{ _err(name) }}
+</div>
+{% endmacro %}
+
+{% macro form_errors() %}
+{% if e is defined and e %}
+<div class="alert alert-danger" role="alert"><i class="bi bi-exclamation-octagon me-1" aria-hidden="true"></i>Revise os campos destacados antes de salvar.{% if e.get('_geral') %}<div class="mt-1 fw-semibold">{{ e.get('_geral') }}</div>{% endif %}</div>
+{% endif %}
+{% endmacro %}
+
+{% macro page_head(title, sub=None, back=None) %}
+<div class="page-head">
+  <div class="min-w-0">
+    {% if back %}<a href="{{ back }}" class="small d-inline-flex align-items-center mb-1"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Voltar</a>{% endif %}
+    <h1>{{ title }}</h1>
+    {% if sub %}<p class="sub">{{ sub }}</p>{% endif %}
+  </div>
+  {% if caller %}<div class="d-flex flex-wrap gap-2">{{ caller() }}</div>{% endif %}
+</div>
+{% endmacro %}
+
+{% macro empty(icon, title, text=None, url=None, label=None) %}
+<div class="empty-state">
+  <i class="bi {{ icon }}" aria-hidden="true"></i>
+  <h3>{{ title }}</h3>
+  {% if text %}<p class="mb-3">{{ text }}</p>{% endif %}
+  {% if url %}<a class="btn btn-primary" href="{{ url }}"><i class="bi bi-plus-lg" aria-hidden="true"></i>{{ label }}</a>{% endif %}
+</div>
+{% endmacro %}
+
+{% macro pagination(pag, endpoint) %}
+{% if pag and pag.pages > 1 %}
+{% set args = request.args.to_dict() %}
+<nav aria-label="Paginação" class="mt-3">
+  <ul class="pagination pagination-sm justify-content-center flex-wrap">
+    <li class="page-item {% if not pag.has_prev %}disabled{% endif %}">
+      {% set _ = args.update({'page': pag.prev_num or 1}) %}
+      <a class="page-link" href="{{ url_for(endpoint, **dict(request.view_args, **args)) }}" aria-label="Anterior"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>
+    </li>
+    {% for p in pag.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+      {% if p %}
+        {% set _ = args.update({'page': p}) %}
+        <li class="page-item {% if p == pag.page %}active{% endif %}"><a class="page-link" href="{{ url_for(endpoint, **dict(request.view_args, **args)) }}" {% if p == pag.page %}aria-current="page"{% endif %}>{{ p }}</a></li>
+      {% else %}<li class="page-item disabled"><span class="page-link">…</span></li>{% endif %}
+    {% endfor %}
+    <li class="page-item {% if not pag.has_next %}disabled{% endif %}">
+      {% set _ = args.update({'page': pag.next_num or pag.pages}) %}
+      <a class="page-link" href="{{ url_for(endpoint, **dict(request.view_args, **args)) }}" aria-label="Próxima"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+    </li>
+  </ul>
+  <p class="text-center text-muted small mb-0">{{ pag.total }} registro(s)</p>
+</nav>
+{% endif %}
+{% endmacro %}
+
+{% macro situacao_badge(sit, label) %}
+{% set cls = {'pendente': 'badge-soft-gold', 'parcial': 'badge-soft-blue', 'quitado': 'badge-soft-green', 'cancelado': 'badge-soft-gray',
+  'ativo': 'badge-soft-green', 'vendido': 'badge-soft-blue', 'morto': 'badge-soft-red', 'transferido': 'badge-soft-gray', 'arquivado': 'badge-soft-gray',
+  'aguardando': 'badge-soft-gold', 'orcamento_enviado': 'badge-soft-blue', 'orcamento_aceito': 'badge-soft-green', 'orcamento_recusado': 'badge-soft-red',
+  'agendado': 'badge-soft-blue', 'em_andamento': 'badge-soft-gold', 'concluido': 'badge-soft-green', 'criada': 'badge-soft-gray',
+  'recebida': 'badge-soft-gray', 'em_analise': 'badge-soft-gold', 'contato_solicitado': 'badge-soft-green', 'encerrada': 'badge-soft-gray',
+  'aberta': 'badge-soft-green', 'pausado': 'badge-soft-gray', 'removido': 'badge-soft-red', 'removida': 'badge-soft-red',
+  'pendente_v': 'badge-soft-gold', 'aprovada': 'badge-soft-green', 'recusada': 'badge-soft-red', 'aberto': 'badge-soft-gold',
+  'respondido': 'badge-soft-green', 'encerrado': 'badge-soft-gray', 'procedente': 'badge-soft-red', 'improcedente': 'badge-soft-gray',
+  'concluida': 'badge-soft-green'} %}
+<span class="badge {{ cls.get(sit, 'badge-soft-gray') }}">{{ label or sit }}</span>
+{% endmacro %}
+
+{% macro denunciar(tipo, alvo_id, classe='btn btn-sm btn-link text-muted') %}
+{% if current_user.is_authenticated %}
+<a class="{{ classe }}" href="{{ url_for('main.denunciar', tipo=tipo, alvo_id=alvo_id, next=request.full_path) }}"><i class="bi bi-flag" aria-hidden="true"></i>Denunciar</a>
+{% endif %}
+{% endmacro %}
+
+{% macro avatar(user, cls='') %}
+{% if user and user.foto %}<img class="avatar {{ cls }}" src="{{ url_for('main.media', caminho=user.foto) }}" alt="">{% else %}<span class="avatar {{ cls }}" aria-hidden="true">{{ user.iniciais if user else '?' }}</span>{% endif %}
+{% endmacro %}
+
+{% macro stars(nota) %}
+{% if nota %}<span class="stars" aria-label="Nota {{ '%.1f'|format(nota|float) }} de 5">{% for i in range(1, 6) %}<i class="bi {% if nota|float >= i %}bi-star-fill{% elif nota|float >= i - 0.5 %}bi-star-half{% else %}bi-star{% endif %}" aria-hidden="true"></i>{% endfor %}</span>{% endif %}
+{% endmacro %}

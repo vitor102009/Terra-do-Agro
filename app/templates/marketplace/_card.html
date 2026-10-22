@@ -1,0 +1,14 @@
+{# Cartão de anúncio. Espera a variável `an` e, opcionalmente, `favs`. #}
+<div class="card listing-card">
+  <div class="thumb">
+    {% if an.capa %}<img src="{{ url_for('main.media', caminho=an.capa) }}" alt="{{ an.titulo }}" loading="lazy">
+    {% else %}<i class="bi {{ icones.get(an.categoria, 'bi-image') if icones is defined else 'bi-image' }}" aria-hidden="true"></i>{% endif %}
+  </div>
+  <div class="card-body">
+    <div class="small text-muted mb-1">{{ an.categoria_label }}{% if an.is_demo %} · <span class="badge badge-demo">Demonstração</span>{% endif %}</div>
+    <h2 class="h6 mb-1"><a class="text-reset stretched-link" href="{{ url_for('marketplace.detalhe', aid=an.id) }}">{{ an.titulo }}</a></h2>
+    <div class="price">{% if an.tipo_preco == 'orcamento' or an.preco is none %}Sob orçamento{% else %}{{ an.preco|moeda }}{% if an.unidade_preco %} <small class="text-muted fw-normal">/ {{ an.unidade_preco }}</small>{% endif %}{% endif %}</div>
+    <div class="meta d-flex justify-content-between mt-1"><span><i class="bi bi-geo-alt" aria-hidden="true"></i> {{ an.municipio }}/{{ an.uf }}</span><span>{{ an.created_at|tempo_relativo }}</span></div>
+    {% if favs is defined and an.id in favs %}<div class="small text-gold mt-1"><i class="bi bi-heart-fill" aria-hidden="true"></i> Favorito</div>{% endif %}
+  </div>
+</div>

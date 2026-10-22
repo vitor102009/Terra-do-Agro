@@ -1,0 +1,24 @@
+{% extends "layouts/app.html" %}
+{% block title %}Perfil da empresa{% endblock %}
+{% block content %}
+{{ m.page_head('Perfil da empresa', 'Lojas, casas agropecuárias, fornecedores e prestadores. O CNPJ é privado.', back=url_for('conta.index')) }}
+<div class="card" style="max-width: 1000px"><div class="card-body">
+  {{ m.form_errors() }}
+  <form method="post" novalidate>{{ m.csrf() }}
+    <div class="row g-3">
+      {{ m.input('nome_fantasia', 'Nome da empresa', required=True, col='col-md-6') }}
+      {{ m.select('tipo', 'Tipo', tipos, required=True, col='col-md-6') }}
+      {{ m.textarea('descricao', 'Descrição, produtos e serviços', rows=4) }}
+      {{ m.input('municipio', 'Município', required=True, col='col-md-5') }}
+      {{ m.uf(col='col-md-2') }}
+      {{ m.input('cnpj', 'CNPJ (privado)', col='col-md-5') }}
+      {{ m.textarea('regiao_atendida', 'Região atendida', rows=2, col='col-md-6') }}
+      {{ m.textarea('condicoes_entrega', 'Condições de entrega', rows=2, col='col-md-6') }}
+      {{ m.textarea('canais_atendimento', 'Canais de atendimento públicos', rows=2, help='Ex.: telefone comercial, horário. Será exibido no perfil público.') }}
+      {{ m.checkbox('publico', 'Exibir a empresa na vitrine de empresas e lojas') }}
+    </div>
+    <p class="small text-muted mt-3 mb-0">Medicamentos veterinários, defensivos e outros produtos regulados só podem ser comercializados por estabelecimentos autorizados, conforme a legislação.</p>
+    <div class="form-actions"><button class="btn btn-primary" type="submit">Salvar</button></div>
+  </form>
+</div></div>
+{% endblock %}

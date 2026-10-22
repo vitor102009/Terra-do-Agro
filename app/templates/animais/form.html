@@ -1,0 +1,53 @@
+{% extends "layouts/app.html" %}
+{% block title %}{{ 'Editar animal' if animal else 'Novo animal' }}{% endblock %}
+{% block content %}
+{{ m.page_head('Editar animal ' ~ animal.identificacao if animal else 'Novo animal', propriedade_atual.nome, back=url_for('animais.ficha', aid=animal.id) if animal else url_for('animais.index')) }}
+<div class="card"><div class="card-body">
+  {{ m.form_errors() }}
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {{ m.csrf() }}
+    <div class="form-section">Identificação</div>
+    <div class="row g-3">
+      {{ m.input('brinco', 'Brinco / identificação', col='col-md-3', help='Principal identificação visual. Deve ser única na propriedade.', attrs='autocomplete="off"') }}
+      {{ m.input('nome', 'Nome (opcional)', col='col-md-3') }}
+      {{ m.select('especie', 'Espécie', especies, required=True, col='col-md-3', empty=None) }}
+      {{ m.input('raca', 'Raça', col='col-md-3', attrs='list="lista-racas"') }}
+      <datalist id="lista-racas">{% for r in ['Nelore', 'Angus', 'Brahman', 'Gir', 'Girolando', 'Guzerá', 'Holandês', 'Jersey', 'Senepol', 'Tabapuã', 'Sindi', 'Mestiço', 'Santa Inês', 'Dorper', 'Boer', 'Saanen', 'Mangalarga Marchador', 'Quarto de Milha'] %}<option value="{{ r }}">{% endfor %}</datalist>
+      {{ m.select('sexo', 'Sexo', sexos, required=True, col='col-md-3') }}
+      {{ m.input('categoria', 'Categoria', col='col-md-3', attrs='list="lista-categorias"', help='Escolha ou digite. Gerencie em Rebanho › Categorias.') }}
+      <datalist id="lista-categorias">{% for c in categorias %}<option value="{{ c }}">{% endfor %}</datalist>
+      {{ m.select('lote_id', 'Lote', lotes, col='col-md-3', empty='Sem lote') }}
+      {{ m.file('foto', 'Fotografia (opcional)', accept='image/jpeg,image/png,image/webp', col='col-md-3', help='JPG, PNG ou WEBP, até 5 MB.') }}
+    </div>
+    <div class="form-section">Nascimento e origem</div>
+    <div class="row g-3">
+      {{ m.input('data_nascimento', 'Data de nascimento', type='date', col='col-md-3') }}
+      <div class="col-md-3 d-flex align-items-end">{{ m.checkbox('nascimento_estimado', 'Data estimada', col='') }}</div>
+      {{ m.select('origem', 'Origem', origens, required=True, col='col-md-3', empty=None) }}
+      {{ m.input('data_entrada', 'Entrada na propriedade', type='date', required=True, col='col-md-3') }}
+      {{ m.select('mae_id', 'Mãe (se cadastrada)', maes, col='col-md-3', empty='Não informada') }}
+      {{ m.input('pai_descricao', 'Pai / reprodutor', col='col-md-3', placeholder='Touro, sêmen ou registro') }}
+      {% if not animal %}
+      {{ m.number('peso_inicial', 'Peso na entrada (kg)', col='col-md-3', help='Cria a primeira pesagem do animal.') }}
+      {% if pode('financeiro') %}
+      <div class="col-md-3" data-show-when="origem=compra">
+        {{ m.money('valor_compra', 'Valor da compra (R$)', col='', help='Lança a despesa no financeiro, vinculada ao animal.') }}
+      </div>
+      {% endif %}
+      {% endif %}
+    </div>
+    <div class="form-section">Situação</div>
+    <div class="row g-3">
+      {{ m.select('situacao_produtiva', 'Situação produtiva', produtivas, col='col-md-4', empty='Não informada') }}
+      {{ m.select('situacao_reprodutiva', 'Situação reprodutiva', reprodutivas, col='col-md-4', empty=None, help='Atualizada automaticamente pelos eventos de reprodução.') }}
+      {{ m.select('situacao_sanitaria', 'Situação sanitária', sanitarias, col='col-md-4', empty=None) }}
+      {{ m.textarea('observacoes', 'Observações', rows=3) }}
+    </div>
+    <div class="form-actions">
+      <a class="btn btn-outline-secondary" href="{{ url_for('animais.ficha', aid=animal.id) if animal else url_for('animais.index') }}">Cancelar</a>
+      {% if not animal %}<button class="btn btn-outline-primary" type="submit" name="continuar" value="1">Salvar e cadastrar outro</button>{% endif %}
+      <button class="btn btn-primary" type="submit"><i class="bi bi-check2" aria-hidden="true"></i>Salvar</button>
+    </div>
+  </form>
+</div></div>
+{% endblock %}

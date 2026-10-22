@@ -1,0 +1,13 @@
+<div class="comment">
+  {{ m.avatar(c.autor, 'avatar-sm') }}
+  <div class="bubble">
+    <div class="d-flex justify-content-between gap-2"><a class="small fw-semibold text-reset" href="{{ url_for('feed.usuario', uid=c.autor.id) }}">{{ c.autor.nome }}</a><span class="small text-muted">{{ c.created_at|tempo_relativo }}</span></div>
+    <div class="small text-pre">{{ c.texto }}</div>
+    <div class="d-flex gap-2">
+      {% if c.autor_id == current_user.id or p.autor_id == current_user.id or pode_moderar_post(p) %}
+      <form method="post" action="{{ url_for('feed.excluir_comentario', cid=c.id) }}" data-confirm="Remover este comentário?">{{ m.csrf() }}<input type="hidden" name="next" value="{{ request.full_path }}"><button class="btn btn-link btn-sm p-0 small text-muted" type="submit">Remover</button></form>
+      {% endif %}
+      {% if c.autor_id != current_user.id %}<a class="small text-muted" href="{{ url_for('main.denunciar', tipo='comentario', alvo_id=c.id, next=request.full_path) }}">Denunciar</a>{% endif %}
+    </div>
+  </div>
+</div>

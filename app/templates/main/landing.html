@@ -1,0 +1,72 @@
+{% extends "layouts/public.html" %}
+{% block title %}A Revolução Digital do Agro Brasileiro{% endblock %}
+{% block public %}
+<header class="landing-hero">
+  <div class="container-xl">
+    <nav class="d-flex align-items-center justify-content-between py-2 mb-5" aria-label="Navegação principal">
+      <a class="brand" href="{{ url_for('main.index') }}">
+        <img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="44" height="44">
+        <span><span class="brand-name d-block">TERRA <span>DO</span> AGRO</span><span class="brand-slogan d-block">A revolução digital do agro brasileiro</span></span>
+      </a>
+      <div class="d-flex gap-2">
+        <a class="btn btn-light-ghost" href="{{ url_for('auth.login') }}">Entrar</a>
+        <a class="btn btn-gold" href="{{ url_for('auth.cadastro') }}">Criar conta</a>
+      </div>
+    </nav>
+    <div class="row align-items-center g-5 position-relative" style="z-index: 1">
+      <div class="col-lg-7">
+        <span class="small-caps text-gold">Terra do Agro</span>
+        <h1 class="mt-2">A revolução digital do <span>agro brasileiro</span></h1>
+        <p class="lead mt-3">Gestão da propriedade, rebanho e finanças, marketplace rural, contratação de profissionais, vagas no campo e comunidade, em uma única plataforma feita para o produtor.</p>
+        <div class="d-flex flex-wrap gap-2 mt-4">
+          <a class="btn btn-gold btn-lg" href="{{ url_for('auth.cadastro') }}">Começar gratuitamente</a>
+          <a class="btn btn-light-ghost btn-lg" href="{{ url_for('auth.login') }}">Já tenho conta</a>
+          <button class="btn btn-light-ghost btn-lg" type="button" data-install-app hidden><i class="bi bi-download" aria-hidden="true"></i>Instalar aplicativo</button>
+        </div>
+      </div>
+      <div class="col-lg-5">
+        <div class="card bg-transparent border-0" style="background: rgba(255,255,255,.05) !important; border: 1px solid rgba(209,163,58,.35) !important">
+          <div class="card-body p-4 text-white">
+            {% for icon, titulo, texto in [
+              ('bi-tags', 'Rebanho por brinco', 'Pesagens, ganho médio diário, vacinas, reprodução e histórico de cada animal.'),
+              ('bi-cash-coin', 'Financeiro do produtor', 'Receitas, despesas, contas a pagar e receber, fluxo de caixa e custo por lote.'),
+              ('bi-wifi-off', 'Funciona no campo', 'Instale no celular e registre pesagens e vacinas sem sinal. Sincroniza depois.'),
+            ] %}
+            <div class="d-flex gap-3 {% if not loop.last %}mb-4{% endif %}"><i class="bi {{ icon }} fs-3 text-gold" aria-hidden="true"></i><div><div class="fw-semibold">{{ titulo }}</div><div class="small text-white-50">{{ texto }}</div></div></div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <img class="fields-art" src="{{ url_for('static', filename='img/campo.svg') }}" alt="" aria-hidden="true" style="position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 140px; opacity: .6">
+</header>
+<main id="conteudo">
+  <section class="landing-section">
+    <div class="container-xl">
+      <h2 class="text-center mb-2">Tudo o que a propriedade precisa</h2>
+      <p class="text-center text-muted mb-5">Simples como um aplicativo de banco, completo como um sistema de gestão.</p>
+      <div class="row g-3">
+        {% for icon, titulo, texto in [
+          ('bi-speedometer2', 'Painel com dados reais', 'Indicadores de rebanho, financeiro e alertas calculados a partir dos seus registros.'),
+          ('bi-shield-plus', 'Sanidade e reprodução', 'Agenda de vacinas, tratamentos, coberturas, diagnósticos e partos.'),
+          ('bi-box-seam', 'Insumos e estoque', 'Entradas, saídas, estoque mínimo e validade, sem duplicar custos.'),
+          ('bi-file-earmark-bar-graph', 'Relatórios', 'Inventário, pesagens, custos por lote e por animal, exportação em CSV e impressão.'),
+          ('bi-shop', 'Marketplace rural', 'Animais, máquinas, insumos e serviços com contato direto pelo chat.'),
+          ('bi-person-badge', 'Profissionais do Agro', 'Veterinários, agrônomos, zootecnistas, técnicos e prestadores, com orçamento e avaliação.'),
+          ('bi-briefcase', 'Vagas no campo', 'Produtores publicam vagas; trabalhadores se candidatam com privacidade.'),
+          ('bi-people', 'Comunidade', 'Grupos por tema e região e um feed com experiências e dicas do campo.'),
+        ] %}
+        <div class="col-md-6 col-xl-3"><div class="card feature-card"><i class="bi {{ icon }}" aria-hidden="true"></i><h3 class="h6">{{ titulo }}</h3><p class="small text-muted mb-0">{{ texto }}</p></div></div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+</main>
+<footer class="landing-footer">
+  <div class="container-xl d-flex flex-wrap justify-content-between gap-3">
+    <span>© Terra do Agro · A revolução digital do agro brasileiro</span>
+    <span><a href="{{ url_for('main.privacidade') }}">Privacidade</a> · <a href="{{ url_for('main.termos') }}">Termos de uso</a></span>
+  </div>
+</footer>
+{% endblock %}

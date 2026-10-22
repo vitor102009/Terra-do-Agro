@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Modo offline · Terra do Agro</title>
+  <meta name="theme-color" content="#073817">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/static/img/logo-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="/static/vendor/bootstrap-icons/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="/static/css/terra.css">
+</head>
+<body>
+  <!-- Casca estática (sem dados de usuário no HTML). Os dados vêm do IndexedDB deste aparelho. Versão {{ versao }} -->
+  <header class="bg-green-dark text-white" style="background: linear-gradient(120deg, #0D120F, #073817) !important; border-bottom: 2px solid #D1A33A">
+    <div class="container-xl py-3 d-flex flex-wrap align-items-center gap-3">
+      <a class="brand" href="/painel">
+        <img src="/static/img/logo-mark.svg" alt="" width="40" height="40">
+        <span><span class="brand-name d-block">TERRA <span>DO</span> AGRO</span><span class="brand-slogan d-block">Modo offline</span></span>
+      </a>
+      <div class="ms-auto d-flex flex-wrap align-items-center gap-2">
+        <span id="off-conexao" class="badge" role="status" aria-live="polite"></span>
+        <a class="btn btn-sm btn-light-ghost" href="/painel" id="off-voltar"><i class="bi bi-house-door" aria-hidden="true"></i>Abrir o sistema</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container-xl py-4" id="conteudo">
+    <div id="off-aviso"></div>
+
+    <section id="off-app" hidden>
+      <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+        <div>
+          <h1 class="h4 mb-1">Olá, <span id="off-nome"></span></h1>
+          <p class="text-muted small mb-0" id="off-sinc"></p>
+        </div>
+        <div class="d-flex flex-wrap gap-2 align-items-end">
+          <div>
+            <label class="form-label small mb-1" for="off-prop">Propriedade</label>
+            <select class="form-select" id="off-prop"></select>
+          </div>
+          <button class="btn btn-outline-primary" type="button" id="off-baixar"><i class="bi bi-cloud-arrow-down" aria-hidden="true"></i>Baixar dados agora</button>
+          <button class="btn btn-gold" type="button" id="off-sincronizar"><i class="bi bi-cloud-arrow-up" aria-hidden="true"></i>Sincronizar pendências</button>
+        </div>
+      </div>
+
+      <div class="notice small mb-3">Disponível sem internet: consulta do rebanho e da agenda baixados neste aparelho e registro de <strong>pesagens</strong>, <strong>vacinas e tratamentos</strong> e <strong>tarefas</strong>. Os registros ficam na fila e são enviados quando a conexão voltar. Financeiro, marketplace, mensagens e demais módulos exigem internet.</div>
+
+      <ul class="nav nav-tabs mb-3" role="tablist">
+        <li class="nav-item" role="presentation"><button class="nav-link active" type="button" data-aba="animais" role="tab" aria-selected="true">Rebanho</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" type="button" data-aba="registrar" role="tab" aria-selected="false">Registrar</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" type="button" data-aba="agenda" role="tab" aria-selected="false">Agenda</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" type="button" data-aba="fila" role="tab" aria-selected="false">Pendências <span class="badge text-bg-warning" id="off-qtd-fila"></span></button></li>
+      </ul>
+
+      <div data-painel="animais">
+        <div class="filters"><label class="form-label" for="off-busca">Buscar pelo brinco ou nome</label><input class="form-control" id="off-busca" type="search" autocomplete="off"></div>
+        <div class="card"><div class="table-responsive"><table class="table table-sm align-middle table-responsive-cards mb-0">
+          <thead><tr><th>Brinco</th><th>Categoria</th><th>Lote</th><th>Situação</th><th class="num">Último peso</th></tr></thead>
+          <tbody id="off-animais"></tbody>
+        </table></div></div>
+        <p class="small text-muted mt-2" id="off-total"></p>
+      </div>
+
+      <div data-painel="registrar" hidden>
+        <div id="off-sem-permissao" class="alert alert-warning" hidden>Seu acesso a esta propriedade é somente de consulta.</div>
+        <div class="row g-3" id="off-forms">
+          <div class="col-lg-4"><div class="card h-100"><div class="card-header"><h2>Pesagem</h2></div><div class="card-body">
+            <form id="f-pesagem" novalidate>
+              <label class="form-label required" for="p-animal">Animal (brinco)</label>
+              <input class="form-control mb-2" id="p-animal" list="off-lista-animais" required autocomplete="off">
+              <label class="form-label required" for="p-data">Data</label>
+              <input class="form-control mb-2" type="date" id="p-data" required>
+              <label class="form-label required" for="p-peso">Peso (kg)</label>
+              <input class="form-control mb-2" id="p-peso" inputmode="decimal" required>
+              <label class="form-label" for="p-obs">Observações</label>
+              <input class="form-control mb-3" id="p-obs">
+              <button class="btn btn-primary w-100" type="submit">Guardar pesagem</button>
+              <div class="small mt-2" data-msg role="status" aria-live="polite"></div>
+            </form>
+          </div></div></div>
+          <div class="col-lg-4"><div class="card h-100"><div class="card-header"><h2>Vacina ou tratamento</h2></div><div class="card-body">
+            <form id="f-sanitario" novalidate>
+              <label class="form-label required" for="s-tipo">Tipo</label>
+              <select class="form-select mb-2" id="s-tipo"></select>
+              <label class="form-label required" for="s-produto">Produto</label>
+              <input class="form-control mb-2" id="s-produto" required>
+              <label class="form-label required" for="s-alvo">Aplicação</label>
+              <select class="form-select mb-2" id="s-alvo"><option value="animal">Animal</option><option value="lote">Lote</option><option value="rebanho">Rebanho da propriedade</option></select>
+              <div id="s-box-animal"><label class="form-label" for="s-animal">Animal (brinco)</label><input class="form-control mb-2" id="s-animal" list="off-lista-animais" autocomplete="off"></div>
+              <div id="s-box-lote" hidden><label class="form-label" for="s-lote">Lote</label><select class="form-select mb-2" id="s-lote"></select></div>
+              <div class="row g-2">
+                <div class="col-6"><label class="form-label required" for="s-data">Data</label><input class="form-control mb-2" type="date" id="s-data" required></div>
+                <div class="col-6"><label class="form-label" for="s-proxima">Próxima</label><input class="form-control mb-2" type="date" id="s-proxima"></div>
+              </div>
+              <label class="form-label" for="s-dose">Dose / partida</label>
+              <input class="form-control mb-3" id="s-dose">
+              <button class="btn btn-primary w-100" type="submit">Guardar registro</button>
+              <div class="small mt-2" data-msg role="status" aria-live="polite"></div>
+            </form>
+          </div></div></div>
+          <div class="col-lg-4"><div class="card h-100"><div class="card-header"><h2>Tarefa</h2></div><div class="card-body">
+            <form id="f-tarefa" novalidate>
+              <label class="form-label required" for="t-titulo">Título</label>
+              <input class="form-control mb-2" id="t-titulo" required>
+              <label class="form-label required" for="t-data">Data</label>
+              <input class="form-control mb-2" type="date" id="t-data" required>
+              <label class="form-label" for="t-desc">Descrição</label>
+              <textarea class="form-control mb-3" id="t-desc" rows="3"></textarea>
+              <button class="btn btn-primary w-100" type="submit">Guardar tarefa</button>
+              <div class="small mt-2" data-msg role="status" aria-live="polite"></div>
+            </form>
+          </div></div></div>
+        </div>
+        <datalist id="off-lista-animais"></datalist>
+      </div>
+
+      <div data-painel="agenda" hidden>
+        <div class="row g-3">
+          <div class="col-lg-6"><div class="card"><div class="card-header"><h2>Agenda sanitária (até 60 dias)</h2></div><ul class="list-group list-group-flush" id="off-agenda"></ul></div></div>
+          <div class="col-lg-6"><div class="card"><div class="card-header"><h2>Tarefas pendentes</h2></div><ul class="list-group list-group-flush" id="off-tarefas"></ul></div></div>
+        </div>
+        <p class="small text-muted mt-2">Agenda conforme a última sincronização.</p>
+      </div>
+
+      <div data-painel="fila" hidden>
+        <div class="card"><ul class="list-group list-group-flush" id="off-fila"></ul></div>
+        <p class="small text-muted mt-2">Cada registro tem um identificador único: reenviar não cria duplicidade. Um item só sai desta lista depois que o servidor confirma que foi salvo.</p>
+      </div>
+    </section>
+  </main>
+  <script src="/static/js/offline-store.js"></script>
+  <script src="/static/js/app.js"></script>
+  <script src="/static/js/offline-page.js"></script>
+</body>
+</html>

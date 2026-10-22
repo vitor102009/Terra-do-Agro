@@ -1,0 +1,22 @@
+{% extends "layouts/app.html" %}
+{% block title %}{{ ev.tipo_label }} · {{ ev.produto }}{% endblock %}
+{% block content %}
+{% call m.page_head(ev.tipo_label ~ ': ' ~ ev.produto, ev.alvo ~ ' · ' ~ (ev.data_aplicacao|data_br), back=url_for('saude.index')) %}
+  {% if pode('editar') %}
+  <form method="post" action="{{ url_for('saude.excluir', eid=ev.id) }}" data-confirm="Excluir este registro sanitário? A exclusão ficará registrada.">{{ m.csrf() }}<button class="btn btn-outline-danger" type="submit"><i class="bi bi-trash" aria-hidden="true"></i>Excluir</button></form>
+  {% endif %}
+{% endcall %}
+<div class="card" style="max-width: 900px"><div class="card-body">
+  <dl class="dl-grid">
+    <div><dt>Aplicação</dt><dd>{% if ev.animal %}<a href="{{ url_for('animais.ficha', aid=ev.animal.id) }}">{{ ev.alvo }}</a>{% elif ev.lote %}<a href="{{ url_for('lotes.detalhe', lid=ev.lote.id) }}">{{ ev.alvo }}</a>{% else %}{{ ev.alvo }}{% endif %}</dd></div>
+    <div><dt>Data</dt><dd>{{ ev.data_aplicacao|data_br }}</dd></div>
+    <div><dt>Partida do produto</dt><dd>{{ ev.lote_produto or '—' }}</dd></div>
+    <div><dt>Dose / via</dt><dd>{{ ev.dose or '—' }}</dd></div>
+    <div><dt>Próxima prevista</dt><dd>{{ ev.proxima_data|data_br }}{% if ev.proxima_resolvida %} (encerrada){% endif %}</dd></div>
+    <div><dt>Responsável</dt><dd>{{ ev.responsavel or '—' }}</dd></div>
+    <div><dt>Profissional</dt><dd>{{ ev.profissional.nome if ev.profissional else '—' }}</dd></div>
+    <div><dt>Registrado por</dt><dd>{{ ev.autor.nome if ev.autor else '—' }} em {{ ev.created_at|datahora_br }}</dd></div>
+  </dl>
+  {% if ev.observacoes %}<hr><p class="text-pre mb-0">{{ ev.observacoes }}</p>{% endif %}
+</div></div>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "layouts/app.html" %}
+{% block title %}Pesagens{% endblock %}
+{% block content %}
+{% call m.page_head('Pesagens', 'Histórico de ' ~ (inicio|data_br) ~ ' a ' ~ (fim|data_br)) %}
+  <a class="btn btn-outline-primary" href="{{ url_for('pesagens.exportar', **args.to_dict()) }}"><i class="bi bi-download" aria-hidden="true"></i>CSV</a>
+  {% if pode('editar') %}
+  <a class="btn btn-outline-primary" href="{{ url_for('pesagens.nova', modo='planilha') }}"><i class="bi bi-table" aria-hidden="true"></i>Pesar lote animal por animal</a>
+  <a class="btn btn-primary" href="{{ url_for('pesagens.nova') }}"><i class="bi bi-plus-lg" aria-hidden="true"></i>Nova pesagem</a>
+  {% endif %}
+{% endcall %}
+
+<form class="filters" method="get">
+  <div class="row g-2 align-items-end">
+    <div class="col-6 col-md-2"><label class="form-label" for="inicio">De</label><input class="form-control" type="date" id="inicio" name="inicio" value="{{ inicio.isoformat() }}"></div>
+    <div class="col-6 col-md-2"><label class="form-label" for="fim">Até</label><input class="form-control" type="date" id="fim" name="fim" value="{{ fim.isoformat() }}"></div>
+    <div class="col-6 col-md-2"><label class="form-label" for="brinco">Brinco</label><input class="form-control" id="brinco" name="brinco" value="{{ args.get('brinco', '') }}"></div>
+    <div class="col-6 col-md-2"><label class="form-label" for="lote">Lote</label><select class="form-select" id="lote" name="lote"><option value="">Todos</option>{% for l in lotes %}<option value="{{ l.id }}" {% if args.get('lote') == l.id|string %}selected{% endif %}>{{ l.nome }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-2"><label class="form-label" for="tipo">Tipo</label><select class="form-select" id="tipo" name="tipo"><option value="">Todas</option><option value="individual" {% if args.get('tipo') == 'individual' %}selected{% endif %}>Individuais</option><option value="lote" {% if args.get('tipo') == 'lote' %}selected{% endif %}>De lote (média)</option></select></div>
+    <div class="col-6 col-md-2"><button class="btn btn-primary w-100" type="submit">Filtrar</button></div>
+  </div>
+</form>
+
+<div class="row g-3">
+  <div class="col-xl-8">
+    <div class="card">
+      {% if pag.items %}
+      <div class="table-responsive"><table class="table table-hover align-middle table-responsive-cards">
+        <thead><tr><th>Data</th><th>Animal / lote</th><th class="num">Peso</th><th>Responsável</th><th>Observações</th>{% if pode('editar') %}<th></th>{% endif %}</tr></thead>
+        <tbody>{% for p in pag.items %}
+          <tr>
+            <td data-label="Data">{{ p.data|data_br }}</td>
+            <td data-label="Animal / lote">{% if p.animal %}<a href="{{ url_for('animais.ficha', aid=p.animal.id) }}">{{ p.animal.identificacao }}</a>{% else %}<a href="{{ url_for('lotes.detalhe', lid=p.lote.id) }}">Lote {{ p.lote.nome }}</a> <small class="text-muted">({{ p.qtd_animais }} animais)</small>{% endif %}</td>
+            <td class="num" data-label="Peso">{{ p.peso_kg|numero(1) }} kg{% if p.lote_id %}<small class="d-block text-muted">média</small>{% endif %}</td>
+            <td data-label="Responsável">{{ p.responsavel or (p.autor.nome if p.autor else '—') }}{% if p.offline_uuid %} <span class="badge badge-soft-blue sync-badge">offline</span>{% endif %}</td>
+            <td data-label="Observações" class="small text-muted">{{ p.observacoes or '' }}</td>
+            {% if pode('editar') %}<td class="text-end" data-label=""><form method="post" action="{{ url_for('pesagens.excluir', pesid=p.id) }}" data-confirm="Excluir esta pesagem? A ação ficará registrada no histórico.">{{ m.csrf() }}<button class="btn btn-sm btn-link text-danger" type="submit" aria-label="Excluir pesagem"><i class="bi bi-trash" aria-hidden="true"></i></button></form></td>{% endif %}
+          </tr>{% endfor %}
+        </tbody></table></div>
+      {% else %}{{ m.empty('bi-speedometer', 'Nenhuma pesagem no período', None, url_for('pesagens.nova') if pode('editar') else None, 'Registrar pesagem') }}{% endif %}
+    </div>
+    {{ m.pagination(pag, 'pesagens.index') }}
+  </div>
+  <div class="col-xl-4">
+    <div class="card kpi kpi-dark mb-3"><div class="label"><i class="bi bi-graph-up" aria-hidden="true"></i>GMD médio no período</div>
+      <div class="value">{% if gmd_medio is not none %}{{ gmd_medio|numero(3) }} kg/dia{% else %}—{% endif %}</div>
+      <div class="hint">{% if gmd_medio is not none %}média de {{ n_animais }} animal(is) com dados suficientes{% else %}dados insuficientes{% endif %}</div></div>
+    <div class="card"><div class="card-header"><h2>Desempenho no período</h2></div>
+      {% if ranking %}
+      <ul class="list-group list-group-flush">{% for a, r in ranking[:10] %}
+        <li class="list-group-item d-flex justify-content-between"><a href="{{ url_for('animais.ficha', aid=a.id) }}">{{ a.identificacao }}</a><span class="{{ 'value-pos' if r.gmd > 0 else 'value-neg' }} fw-semibold">{{ r.gmd|numero(3) }} kg/dia</span></li>
+      {% endfor %}</ul>
+      <div class="card-body small text-muted">Critério: (último − primeiro peso) ÷ dias, por animal, com ao menos 2 pesagens individuais e 7 dias de intervalo dentro do período.</div>
+      {% else %}<div class="card-body small text-muted">Sem animais com duas ou mais pesagens e 7 dias de intervalo no período.</div>{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

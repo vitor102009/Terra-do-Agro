@@ -1,0 +1,65 @@
+{% extends "layouts/app.html" %}
+{% block title %}Reprodução{% endblock %}
+{% block content %}
+{% call m.page_head('Reprodução e manejo reprodutivo', 'Diagnósticos devem ser informados por profissional habilitado. Previsões de parto são estimativas.') %}
+  {% if pode('editar') %}<a class="btn btn-primary" href="{{ url_for('reproducao.novo') }}"><i class="bi bi-plus-lg" aria-hidden="true"></i>Registrar evento</a>{% endif %}
+{% endcall %}
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-2"><div class="card kpi"><div class="label"><i class="bi bi-heart-pulse" aria-hidden="true"></i>Paridas</div><div class="value">{{ repro.paridas }}</div></div></div>
+  <div class="col-6 col-md-2"><div class="card kpi"><div class="label"><i class="bi bi-hourglass-split" aria-hidden="true"></i>Gestantes</div><div class="value">{{ repro.gestantes }}</div></div></div>
+  <div class="col-6 col-md-2"><div class="card kpi"><div class="label"><i class="bi bi-circle" aria-hidden="true"></i>Vazias</div><div class="value">{{ repro.vazias }}</div></div></div>
+  <div class="col-6 col-md-2"><div class="card kpi"><div class="label"><i class="bi bi-clock" aria-hidden="true"></i>Aguardando diagnóstico</div><div class="value">{{ repro.servidas }}</div></div></div>
+  <div class="col-6 col-md-2"><div class="card kpi kpi-gold"><div class="label"><i class="bi bi-percent" aria-hidden="true"></i>Taxa de prenhez</div><div class="value">{{ (repro.taxa_prenhez|numero(1) ~ '%') if repro.taxa_prenhez is not none else '—' }}</div></div></div>
+  <div class="col-6 col-md-2"><div class="card kpi"><div class="label"><i class="bi bi-arrow-left-right" aria-hidden="true"></i>Intervalo entre partos</div><div class="value">{{ (iep_medio|numero(0) ~ ' d') if iep_medio is not none else '—' }}</div><div class="hint">{{ iep_n }} intervalo(s)</div></div></div>
+</div>
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item"><a class="nav-link {% if aba == 'situacao' %}active{% endif %}" href="{{ url_for('reproducao.index') }}">Situação das fêmeas</a></li>
+  <li class="nav-item"><a class="nav-link {% if aba == 'eventos' %}active{% endif %}" href="{{ url_for('reproducao.index', aba='eventos') }}">Histórico de eventos</a></li>
+</ul>
+{% if aba == 'eventos' %}
+<form class="filters" method="get"><input type="hidden" name="aba" value="eventos">
+  <div class="row g-2 align-items-end">
+    <div class="col-8 col-md-4"><label class="form-label" for="tipo">Tipo</label><select class="form-select" id="tipo" name="tipo" data-autosubmit><option value="">Todos</option>{% for k, r in tipos.items() %}<option value="{{ k }}" {% if args.get('tipo') == k %}selected{% endif %}>{{ r }}</option>{% endfor %}</select></div>
+  </div>
+</form>
+<div class="card">
+  {% if pag.items %}
+  <div class="table-responsive"><table class="table table-hover align-middle table-responsive-cards">
+    <thead><tr><th>Data</th><th>Fêmea</th><th>Evento</th><th>Detalhes</th><th>Responsável</th>{% if pode('editar') %}<th></th>{% endif %}</tr></thead>
+    <tbody>{% for ev in pag.items %}
+      <tr>
+        <td data-label="Data">{{ ev.data|data_br }}</td>
+        <td data-label="Fêmea"><a href="{{ url_for('animais.ficha', aid=ev.animal.id) }}">{{ ev.animal.identificacao }}</a></td>
+        <td data-label="Evento">{{ ev.tipo_label }}</td>
+        <td data-label="Detalhes" class="small">
+          {% if ev.reprodutor %}Reprodutor {{ ev.reprodutor.identificacao }}{% elif ev.reprodutor_descricao %}{{ ev.reprodutor_descricao }}{% endif %}
+          {% if ev.diagnostico_resultado %}{{ {'positivo': 'Positivo', 'negativo': 'Negativo', 'inconclusivo': 'Inconclusivo'}[ev.diagnostico_resultado] }}{% if ev.metodo_diagnostico %} ({{ ev.metodo_diagnostico }}){% endif %}{% endif %}
+          {% if ev.previsao_parto %}<span class="d-block text-muted">Parto previsto (estimativa): {{ ev.previsao_parto|data_br }}</span>{% endif %}
+          {% if ev.cria %}<span class="d-block">Cria: <a href="{{ url_for('animais.ficha', aid=ev.cria.id) }}">{{ ev.cria.identificacao }}</a></span>{% endif %}
+        </td>
+        <td data-label="Responsável">{{ ev.responsavel or (ev.autor.nome if ev.autor else '—') }}</td>
+        {% if pode('editar') %}<td class="text-end" data-label=""><form method="post" action="{{ url_for('reproducao.excluir', evid=ev.id) }}" data-confirm="Excluir este evento? A situação reprodutiva será recalculada.">{{ m.csrf() }}<button class="btn btn-sm btn-link text-danger" type="submit" aria-label="Excluir evento"><i class="bi bi-trash" aria-hidden="true"></i></button></form></td>{% endif %}
+      </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}{{ m.empty('bi-gender-female', 'Nenhum evento registrado') }}{% endif %}
+</div>
+{{ m.pagination(pag, 'reproducao.index') }}
+{% else %}
+<div class="card">
+  {% if femeas %}
+  <div class="table-responsive"><table class="table table-hover align-middle table-responsive-cards">
+    <thead><tr><th>Fêmea</th><th>Categoria</th><th>Situação</th><th>Último evento</th><th>Previsão de parto (estimada)</th>{% if pode('editar') %}<th></th>{% endif %}</tr></thead>
+    <tbody>{% for f in femeas %}{% set ult = ultimos.get(f.id) %}
+      <tr>
+        <td data-label="Fêmea"><a class="fw-semibold" href="{{ url_for('animais.ficha', aid=f.id) }}">{{ f.identificacao }}</a></td>
+        <td data-label="Categoria">{{ f.categoria or '—' }}</td>
+        <td data-label="Situação"><span class="badge {{ {'gestante': 'badge-soft-green', 'parida': 'badge-soft-blue', 'vazia': 'badge-soft-gray', 'servida': 'badge-soft-gold'}.get(f.situacao_reprodutiva, 'badge-soft-gray') }}">{{ situacoes.get(f.situacao_reprodutiva) }}</span></td>
+        <td data-label="Último evento">{% if ult %}{{ ult.tipo_label }} · {{ ult.data|data_br }} <small class="text-muted">({{ (hoje - ult.data).days }} dias)</small>{% else %}—{% endif %}</td>
+        <td data-label="Previsão de parto">{{ ultimos.get(('prev', f.id))|data_br if f.situacao_reprodutiva == 'gestante' and ultimos.get(('prev', f.id)) else '—' }}</td>
+        {% if pode('editar') %}<td class="text-end" data-label=""><a class="btn btn-sm btn-outline-primary" href="{{ url_for('reproducao.novo', animal=f.id) }}">Registrar</a></td>{% endif %}
+      </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}{{ m.empty('bi-gender-female', 'Nenhuma fêmea com situação reprodutiva registrada', 'Registre coberturas, inseminações, diagnósticos e partos para acompanhar o rebanho de cria.', url_for('reproducao.novo') if pode('editar') else None, 'Registrar evento') }}{% endif %}
+</div>
+{% endif %}
+{% endblock %}

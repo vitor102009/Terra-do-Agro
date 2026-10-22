@@ -1,0 +1,106 @@
+{% extends "layouts/app.html" %}
+{% block title %}{{ sol.titulo }}{% endblock %}
+{% block content %}
+{% call m.page_head(sol.titulo, ('Orçamento' if sol.tipo == 'orcamento' else 'Atendimento') ~ ' · ' ~ sol.perfil.categoria.nome, back=url_for('servicos.index', papel=papel or 'cliente')) %}
+  {{ m.situacao_badge(sol.status, sol.status_label) }}
+{% endcall %}
+{% if sol.status != 'cancelado' %}
+<div class="stepper mb-3" aria-label="Etapas da contratação">
+  {% for et in etapas %}
+  <div class="step {% if etapa is not none and loop.index0 < etapa %}done{% elif loop.index0 == etapa %}now{% endif %}">{{ status[et] }}</div>
+  {% endfor %}
+</div>
+{% endif %}
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card mb-3"><div class="card-body">
+      <dl class="dl-grid mb-3">
+        <div><dt>Cliente</dt><dd>{{ sol.cliente.nome }}</dd></div>
+        <div><dt>Profissional</dt><dd><a href="{{ url_for('profissionais.perfil', perfil_id=sol.perfil.id) }}">{{ sol.perfil.user.nome }}</a></dd></div>
+        <div><dt>Local</dt><dd>{{ sol.municipio or '—' }}{% if sol.uf %}/{{ sol.uf }}{% endif %}{% if sol.propriedade and papel == 'cliente' %} · {{ sol.propriedade.nome }}{% endif %}</dd></div>
+        <div><dt>Data desejada</dt><dd>{{ sol.data_desejada|data_br }}</dd></div>
+        <div><dt>Agendado para</dt><dd>{{ sol.data_agendada|datahora_br if sol.data_agendada else '—' }}</dd></div>
+        <div><dt>Criada em</dt><dd>{{ sol.created_at|datahora_br }}</dd></div>
+      </dl>
+      <h2 class="h6">Descrição</h2>
+      <p class="text-pre">{{ sol.descricao }}</p>
+      {% if sol.observacoes %}<h2 class="h6">Observações</h2><p class="text-pre">{{ sol.observacoes }}</p>{% endif %}
+      {% if sol.anexo %}<a class="btn btn-sm btn-outline-primary" href="{{ url_for('servicos.anexo', sid=sol.id) }}"><i class="bi bi-paperclip" aria-hidden="true"></i>Baixar anexo</a>{% endif %}
+    </div></div>
+
+    {% if sol.orcamentos %}
+    <div class="card mb-3"><div class="card-header"><h2>Orçamentos</h2></div>
+      <ul class="list-group list-group-flush">{% for o in sol.orcamentos %}
+        <li class="list-group-item">
+          <div class="d-flex justify-content-between"><span class="fs-5 fw-bold" style="color: var(--ta-green-dark)">{{ o.valor|moeda }}</span>
+            <span class="badge {{ {'enviado': 'badge-soft-gold', 'aceito': 'badge-soft-green', 'recusado': 'badge-soft-red', 'substituido': 'badge-soft-gray'}[o.status] }}">{{ {'enviado': 'Aguardando resposta', 'aceito': 'Aceito', 'recusado': 'Recusado', 'substituido': 'Substituído'}[o.status] }}</span></div>
+          <p class="small text-pre mb-1">{{ o.descricao }}</p>
+          <div class="small text-muted">{% if o.prazo_execucao %}Prazo: {{ o.prazo_execucao }} · {% endif %}{% if o.validade %}Válido até {{ o.validade|data_br }} · {% endif %}Enviado {{ o.created_at|datahora_br }}</div>
+        </li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+
+    <div class="card"><div class="card-header"><h2>Histórico</h2></div><div class="card-body">
+      <ul class="timeline">{% for h in sol.historico|reverse %}
+        <li class="{% if loop.first %}current{% endif %}"><div class="small fw-semibold">{{ status.get(h.status_novo, h.status_novo) }}</div>
+          <div class="small text-muted">{{ h.created_at|datahora_br }} · {{ h.user.nome if h.user else 'Sistema' }}{% if h.nota %}<span class="d-block">{{ h.nota }}</span>{% endif %}</div></li>
+      {% endfor %}</ul>
+    </div></div>
+  </div>
+
+  <div class="col-lg-4">
+    {% if papel %}
+    <div class="card mb-3"><div class="card-header"><h2>Ações</h2></div><div class="card-body d-grid gap-2">
+      <a class="btn btn-outline-primary" href="{{ url_for('chat.iniciar', user_id=(sol.perfil.user_id if papel == 'cliente' else sol.cliente_id), solicitacao=sol.id) }}"><i class="bi bi-chat-dots" aria-hidden="true"></i>Conversar</a>
+      {% if 'aceitar_orcamento' in acoes %}
+      <form method="post" action="{{ url_for('servicos.acao', sid=sol.id) }}">{{ m.csrf() }}<input type="hidden" name="acao" value="aceitar_orcamento"><button class="btn btn-primary w-100" type="submit">Aceitar orçamento</button></form>
+      <form method="post" action="{{ url_for('servicos.acao', sid=sol.id) }}" data-confirm="Recusar este orçamento?">{{ m.csrf() }}<input type="hidden" name="acao" value="recusar_orcamento"><button class="btn btn-outline-danger w-100" type="submit">Recusar orçamento</button></form>
+      {% endif %}
+      {% if 'agendar' in acoes %}
+      <form method="post" action="{{ url_for('servicos.acao', sid=sol.id) }}" class="border rounded p-2">{{ m.csrf() }}<input type="hidden" name="acao" value="agendar">
+        <label class="form-label small" for="data_agendada">{{ 'Reagendar' if sol.status == 'agendado' else 'Agendar atendimento' }}</label>
+        <input class="form-control mb-2" type="datetime-local" id="data_agendada" name="data_agendada" required>
+        <input class="form-control mb-2" name="nota" placeholder="Observação (opcional)" aria-label="Observação do agendamento">
+        <button class="btn btn-primary w-100" type="submit">Confirmar agendamento</button></form>
+      {% endif %}
+      {% if 'iniciar' in acoes %}<form method="post" action="{{ url_for('servicos.acao', sid=sol.id) }}">{{ m.csrf() }}<input type="hidden" name="acao" value="iniciar"><button class="btn btn-primary w-100" type="submit">Iniciar serviço</button></form>{% endif %}
+      {% if 'concluir' in acoes %}<form method="post" action="{{ url_for('servicos.acao', sid=sol.id) }}" data-confirm="Confirmar que o serviço foi concluído?">{{ m.csrf() }}<input type="hidden" name="acao" value="concluir"><button class="btn btn-gold w-100" type="submit">Marcar como concluído</button></form>{% endif %}
+      {% if 'recusar_pedido' in acoes %}<form method="post" action="{{ url_for('servicos.acao', sid=sol.id) }}" data-confirm="Recusar este pedido?">{{ m.csrf() }}<input type="hidden" name="acao" value="recusar_pedido"><input class="form-control mb-2" name="nota" placeholder="Motivo (opcional)" aria-label="Motivo da recusa"><button class="btn btn-outline-danger w-100" type="submit">Recusar pedido</button></form>{% endif %}
+      {% if 'cancelar' in acoes %}<form method="post" action="{{ url_for('servicos.acao', sid=sol.id) }}" data-confirm="Cancelar esta solicitação?">{{ m.csrf() }}<input type="hidden" name="acao" value="cancelar"><button class="btn btn-outline-danger w-100" type="submit">Cancelar solicitação</button></form>{% endif %}
+      {% if sol.status == 'concluido' and papel == 'cliente' and sol.propriedade_id and pode('financeiro') %}
+      <a class="btn btn-outline-primary" href="{{ url_for('financeiro.novo', tipo='despesa', descricao='Serviço: ' ~ sol.titulo, valor=(sol.orcamento_vigente.valor if sol.orcamento_vigente else '')) }}"><i class="bi bi-cash" aria-hidden="true"></i>Lançar despesa do serviço</a>
+      {% endif %}
+    </div></div>
+    {% endif %}
+
+    {% if pode_orcar %}
+    <div class="card mb-3"><div class="card-header"><h2>{{ 'Novo orçamento' if sol.status != 'orcamento_enviado' else 'Substituir orçamento' }}</h2></div><div class="card-body">
+      <form method="post" action="{{ url_for('servicos.orcamento', sid=sol.id) }}" novalidate>{{ m.csrf() }}
+        <div class="row g-2">
+          {{ m.money('valor', 'Valor (R$)', required=True, col='col-6') }}
+          {{ m.input('validade', 'Válido até', type='date', col='col-6') }}
+          {{ m.input('prazo_execucao', 'Prazo de execução', col='col-12') }}
+          {{ m.textarea('descricao', 'O que está incluído', required=True, rows=3) }}
+          <div class="col-12"><button class="btn btn-primary w-100" type="submit">Enviar orçamento</button></div>
+        </div>
+      </form>
+    </div></div>
+    {% endif %}
+
+    {% if pode_avaliar %}
+    <div class="card mb-3"><div class="card-header"><h2>Avaliar o serviço</h2></div><div class="card-body">
+      <form method="post" action="{{ url_for('servicos.avaliar', sid=sol.id) }}">{{ m.csrf() }}
+        <fieldset class="mb-2"><legend class="form-label fs-6">Nota</legend>
+          <div class="d-flex gap-3">{% for n in range(1, 6) %}<div class="form-check"><input class="form-check-input" type="radio" name="nota" id="nota{{ n }}" value="{{ n }}" required><label class="form-check-label" for="nota{{ n }}">{{ n }}</label></div>{% endfor %}</div>
+        </fieldset>
+        <label class="form-label" for="comentario">Comentário</label>
+        <textarea class="form-control mb-2" id="comentario" name="comentario" rows="3"></textarea>
+        <button class="btn btn-primary w-100" type="submit">Publicar avaliação</button>
+      </form>
+    </div></div>
+    {% elif sol.avaliacao %}
+    <div class="card"><div class="card-body"><div class="small text-muted mb-1">Avaliação do cliente</div>{{ m.stars(sol.avaliacao.nota) }}{% if sol.avaliacao.comentario %}<p class="small mt-1 mb-0">{{ sol.avaliacao.comentario }}</p>{% endif %}</div></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

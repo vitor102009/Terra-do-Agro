@@ -1,0 +1,69 @@
+{% extends "layouts/app.html" %}
+{% block title %}Sanidade e vacinação{% endblock %}
+{% block content %}
+{% call m.page_head('Sanidade e vacinação', 'Organização e acompanhamento. Não substitui a avaliação de um médico-veterinário.') %}
+  {% if pode('editar') %}<a class="btn btn-primary" href="{{ url_for('saude.novo') }}"><i class="bi bi-plus-lg" aria-hidden="true"></i>Novo registro</a>{% endif %}
+{% endcall %}
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-3"><div class="card kpi kpi-danger"><div class="label"><i class="bi bi-shield-exclamation" aria-hidden="true"></i>Atrasadas</div><div class="value">{{ n_vencidas }}</div><a class="stretched-link" href="{{ url_for('saude.index', aba='agenda') }}" aria-label="Ver agenda"></a></div></div>
+  <div class="col-6 col-md-3"><div class="card kpi kpi-gold"><div class="label"><i class="bi bi-calendar-event" aria-hidden="true"></i>Próximos 15 dias</div><div class="value">{{ n_proximas }}</div><a class="stretched-link" href="{{ url_for('saude.index', aba='agenda') }}" aria-label="Ver agenda"></a></div></div>
+</div>
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item"><a class="nav-link {% if aba == 'historico' %}active{% endif %}" href="{{ url_for('saude.index') }}">Histórico de aplicações</a></li>
+  <li class="nav-item"><a class="nav-link {% if aba == 'agenda' %}active{% endif %}" href="{{ url_for('saude.index', aba='agenda') }}">Agenda sanitária</a></li>
+  <li class="nav-item"><a class="nav-link {% if aba == 'consultas' %}active{% endif %}" href="{{ url_for('saude.index', aba='consultas') }}">Consultas e exames</a></li>
+</ul>
+
+{% if aba == 'agenda' %}
+  {% for titulo, lista, cls in [('Atrasadas', vencidas, 'badge-soft-red'), ('Programadas', proximas, 'badge-soft-gold')] %}
+  <div class="card mb-3"><div class="card-header"><h2>{{ titulo }} <span class="badge {{ cls }}">{{ lista|length }}</span></h2></div>
+    {% if lista %}
+    <div class="table-responsive"><table class="table align-middle table-responsive-cards">
+      <thead><tr><th>Data prevista</th><th>Produto</th><th>Alvo</th><th>Última aplicação</th><th></th></tr></thead>
+      <tbody>{% for ev in lista %}
+        <tr>
+          <td data-label="Data prevista"><span class="fw-semibold">{{ ev.proxima_data|data_br }}</span><small class="d-block text-muted">{{ (ev.proxima_data - hoje).days }} dia(s)</small></td>
+          <td data-label="Produto">{{ ev.produto }}<small class="d-block text-muted">{{ ev.tipo_label }}</small></td>
+          <td data-label="Alvo">{{ ev.alvo }}</td>
+          <td data-label="Última aplicação">{{ ev.data_aplicacao|data_br }}</td>
+          <td class="text-end" data-label="">
+            {% if pode('editar') %}
+            <a class="btn btn-sm btn-primary" href="{{ url_for('saude.novo', tipo=ev.tipo, animal=ev.animal_id or '', lote=ev.lote_id or '') }}">Registrar aplicação</a>
+            <form class="d-inline" method="post" action="{{ url_for('saude.resolver', eid=ev.id) }}" data-confirm="Encerrar esta pendência sem registrar aplicação?">{{ m.csrf() }}<button class="btn btn-sm btn-outline-secondary" type="submit">Encerrar</button></form>
+            {% endif %}
+          </td>
+        </tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}<div class="card-body text-muted small">Nada {{ 'atrasado' if titulo == 'Atrasadas' else 'programado' }}.</div>{% endif %}
+  </div>
+  {% endfor %}
+  <p class="small text-muted">Ao registrar uma nova aplicação do mesmo produto no mesmo animal, lote ou rebanho, a pendência anterior é encerrada automaticamente.</p>
+{% else %}
+<form class="filters" method="get">
+  <input type="hidden" name="aba" value="{{ aba }}">
+  <div class="row g-2 align-items-end">
+    <div class="col-6 col-md-3"><label class="form-label" for="tipo">Tipo</label><select class="form-select" id="tipo" name="tipo"><option value="">Todos</option>{% for k, r in tipos.items() %}<option value="{{ k }}" {% if args.get('tipo') == k %}selected{% endif %}>{{ r }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-3"><label class="form-label" for="produto">Produto</label><input class="form-control" id="produto" name="produto" value="{{ args.get('produto', '') }}"></div>
+    <div class="col-6 col-md-3"><label class="form-label" for="brinco">Brinco</label><input class="form-control" id="brinco" name="brinco" value="{{ args.get('brinco', '') }}"></div>
+    <div class="col-6 col-md-3"><button class="btn btn-primary w-100" type="submit">Filtrar</button></div>
+  </div>
+</form>
+<div class="card">
+  {% if pag.items %}
+  <div class="table-responsive"><table class="table table-hover align-middle table-responsive-cards">
+    <thead><tr><th>Data</th><th>Tipo</th><th>Produto</th><th>Alvo</th><th>Próxima</th><th>Responsável</th></tr></thead>
+    <tbody>{% for ev in pag.items %}
+      <tr>
+        <td data-label="Data"><a href="{{ url_for('saude.detalhe', eid=ev.id) }}">{{ ev.data_aplicacao|data_br }}</a></td>
+        <td data-label="Tipo">{{ ev.tipo_label }}</td>
+        <td data-label="Produto">{{ ev.produto }}{% if ev.lote_produto %}<small class="d-block text-muted">Partida {{ ev.lote_produto }}</small>{% endif %}</td>
+        <td data-label="Alvo">{% if ev.animal %}<a href="{{ url_for('animais.ficha', aid=ev.animal.id) }}">{{ ev.alvo }}</a>{% else %}{{ ev.alvo }}{% endif %}</td>
+        <td data-label="Próxima">{% if ev.proxima_data %}{{ ev.proxima_data|data_br }}{% if ev.proxima_resolvida %} <span class="badge badge-soft-green">ok</span>{% endif %}{% else %}—{% endif %}</td>
+        <td data-label="Responsável">{{ ev.responsavel or '—' }}{% if ev.offline_uuid %} <span class="badge badge-soft-blue sync-badge">offline</span>{% endif %}</td>
+      </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}{{ m.empty('bi-shield-plus', 'Nenhum registro encontrado', None, url_for('saude.novo') if pode('editar') else None, 'Novo registro') }}{% endif %}
+</div>
+{{ m.pagination(pag, 'saude.index') }}
+{% endif %}
+{% endblock %}

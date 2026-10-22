@@ -1,0 +1,29 @@
+{% extends "layouts/app.html" %}
+{% block title %}Trabalhadores disponíveis{% endblock %}
+{% block content %}
+{{ m.page_head('Trabalhadores rurais', 'Perfis que optaram por aparecer na busca. O contato é feito por mensagem interna.') }}
+{% include "vagas/_nav.html" %}
+<form class="filters" method="get">
+  <div class="row g-2 align-items-end">
+    <div class="col-12 col-md-4"><label class="form-label" for="q">Habilidade ou região</label><input class="form-control" id="q" name="q" value="{{ args.get('q', '') }}"></div>
+    <div class="col-6 col-md-3"><label class="form-label" for="categoria">Tipo de trabalho</label><select class="form-select" id="categoria" name="categoria"><option value="">Todos</option>{% for k, r in categorias.items() %}<option value="{{ k }}" {% if args.get('categoria') == k %}selected{% endif %}>{{ r }}</option>{% endfor %}</select></div>
+    <div class="col-3 col-md-1"><label class="form-label" for="uf">UF</label><select class="form-select" id="uf" name="uf"><option value="">—</option>{% for u in ufs %}<option {% if args.get('uf') == u %}selected{% endif %}>{{ u }}</option>{% endfor %}</select></div>
+    <div class="col-3 col-md-2"><div class="form-check"><input class="form-check-input" type="checkbox" id="disponivel" name="disponivel" value="1" {% if args.get('disponivel') == '1' %}checked{% endif %}><label class="form-check-label small" for="disponivel">Disponíveis</label></div></div>
+    <div class="col-12 col-md-2"><button class="btn btn-primary w-100" type="submit">Buscar</button></div>
+  </div>
+</form>
+<div class="row g-3">
+  {% for t in pag.items %}
+  <div class="col-md-6 col-xl-4"><div class="card h-100"><div class="card-body">
+    <div class="d-flex gap-3 align-items-center">{{ m.avatar(t.user) }}<div class="min-w-0"><div class="fw-semibold">{{ t.user.nome }}</div><div class="small text-muted">{{ t.municipio }}/{{ t.uf }}</div></div></div>
+    <p class="mt-2 mb-1 fw-semibold small">{{ t.titulo }}</p>
+    <div class="d-flex flex-wrap gap-1 mb-2">{% for c in t.lista_categorias %}<span class="badge badge-soft-green">{{ categorias.get(c) }}</span>{% endfor %}</div>
+    {% if t.habilidades %}<p class="small text-muted mb-1">{{ t.habilidades|truncate(140) }}</p>{% endif %}
+    <div class="small {{ 'text-success' if t.disponivel else 'text-muted' }}">{{ 'Disponível' if t.disponivel else 'Indisponível no momento' }}{% if t.regiao_interesse %} · procura em {{ t.regiao_interesse }}{% endif %}</div>
+  </div>
+  {% if t.user_id != current_user.id %}<div class="card-footer bg-transparent"><a class="btn btn-sm btn-outline-primary" href="{{ url_for('chat.iniciar', user_id=t.user_id) }}"><i class="bi bi-chat-dots" aria-hidden="true"></i>Enviar mensagem</a></div>{% endif %}
+  </div></div>
+  {% else %}<div class="col-12"><div class="card">{{ m.empty('bi-person-workspace', 'Nenhum trabalhador encontrado') }}</div></div>{% endfor %}
+</div>
+{{ m.pagination(pag, 'vagas.trabalhadores') }}
+{% endblock %}

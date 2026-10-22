@@ -1,0 +1,60 @@
+{% extends "layouts/app.html" %}
+{% block title %}Nova pesagem{% endblock %}
+{% block content %}
+{{ m.page_head('Registrar pesagem', propriedade_atual.nome, back=url_for('pesagens.index')) }}
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item"><a class="nav-link {% if modo == 'animal' %}active{% endif %}" href="{{ url_for('pesagens.nova', modo='animal') }}">Individual</a></li>
+  <li class="nav-item"><a class="nav-link {% if modo == 'planilha' %}active{% endif %}" href="{{ url_for('pesagens.nova', modo='planilha') }}">Lote, animal por animal</a></li>
+  <li class="nav-item"><a class="nav-link {% if modo == 'lote' %}active{% endif %}" href="{{ url_for('pesagens.nova', modo='lote') }}">Lote (peso médio)</a></li>
+</ul>
+<div class="card" style="max-width: 900px"><div class="card-body">
+  {{ m.form_errors() }}
+  {% if modo == 'planilha' and not lote_planilha %}
+  <form method="get">
+    <input type="hidden" name="modo" value="planilha">
+    <div class="row g-3 align-items-end">
+      {{ m.select('lote_id', 'Escolha o lote', lotes, required=True, col='col-md-8') }}
+      <div class="col-md-4"><button class="btn btn-primary w-100" type="submit">Carregar animais</button></div>
+    </div>
+  </form>
+  {% else %}
+  <form method="post" novalidate>
+    {{ m.csrf() }}<input type="hidden" name="modo" value="{{ modo }}">
+    <div class="row g-3">
+      {{ m.input('data', 'Data da pesagem', type='date', required=True, col='col-md-4') }}
+      {{ m.input('responsavel', 'Responsável', col='col-md-4') }}
+      {% if modo == 'animal' %}
+        {{ m.select('animal_id', 'Animal (brinco)', animais, required=True, col='col-md-4') }}
+        {{ m.number('peso_kg', 'Peso (kg)', required=True, col='col-md-4') }}
+      {% elif modo == 'lote' %}
+        {{ m.select('lote_id', 'Lote', lotes, required=True, col='col-md-4') }}
+        {{ m.number('peso_kg', 'Peso médio por animal (kg)', required=True, col='col-md-4') }}
+        {{ m.input('qtd_animais', 'Animais pesados', type='number', required=True, col='col-md-4', attrs='min="1"') }}
+        <div class="col-12"><p class="small text-muted mb-0">A pesagem de lote registra a média do grupo e não altera o peso individual dos animais.</p></div>
+      {% else %}
+        <input type="hidden" name="lote_id" value="{{ lote_planilha.id }}">
+        <div class="col-12">
+          <div class="d-flex justify-content-between align-items-center mb-2"><span class="fw-semibold">Lote {{ lote_planilha.nome }} · {{ animais_planilha|length }} animais</span><a class="small" href="{{ url_for('pesagens.nova', modo='planilha') }}">Trocar lote</a></div>
+          {% if animais_planilha %}
+          <div class="table-responsive"><table class="table table-sm align-middle">
+            <thead><tr><th>Brinco</th><th class="num">Último peso</th><th style="width: 180px">Peso agora (kg)</th></tr></thead>
+            <tbody>{% for a in animais_planilha %}
+              <tr><td>{{ a.identificacao }}</td><td class="num text-muted">{{ (a.peso_atual|numero(1) ~ ' kg') if a.peso_atual is not none else '—' }}</td>
+                <td><label class="visually-hidden" for="peso_{{ a.id }}">Peso de {{ a.identificacao }}</label><input class="form-control form-control-sm{% if e and e.get('peso_' ~ a.id) %} is-invalid{% endif %}" id="peso_{{ a.id }}" name="peso_{{ a.id }}" inputmode="decimal" value="{{ v.get('peso_' ~ a.id, '') }}">{% if e and e.get('peso_' ~ a.id) %}<div class="invalid-feedback">{{ e.get('peso_' ~ a.id) }}</div>{% endif %}</td></tr>
+            {% endfor %}</tbody>
+          </table></div>
+          <p class="small text-muted">Deixe em branco os animais que não foram pesados.</p>
+          {% else %}<p class="text-muted">Este lote não tem animais ativos.</p>{% endif %}
+        </div>
+      {% endif %}
+      {{ m.textarea('observacoes', 'Observações', rows=2) }}
+    </div>
+    <div class="form-actions">
+      <a class="btn btn-outline-secondary" href="{{ url_for('pesagens.index') }}">Cancelar</a>
+      {% if modo == 'animal' %}<button class="btn btn-outline-primary" type="submit" name="continuar" value="1">Salvar e pesar outro</button>{% endif %}
+      <button class="btn btn-primary" type="submit"><i class="bi bi-check2" aria-hidden="true"></i>Salvar</button>
+    </div>
+  </form>
+  {% endif %}
+</div></div>
+{% endblock %}

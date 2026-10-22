@@ -1,0 +1,20 @@
+{% extends "layouts/app.html" %}
+{% block title %}{{ 'Editar grupo' if grupo else 'Criar grupo' }}{% endblock %}
+{% block content %}
+{{ m.page_head('Editar grupo' if grupo else 'Criar grupo', back=url_for('comunidade.grupo', gid=grupo.id) if grupo else url_for('comunidade.index')) }}
+<div class="card" style="max-width: 860px"><div class="card-body">
+  {{ m.form_errors() }}
+  <form method="post" enctype="multipart/form-data" novalidate>{{ m.csrf() }}
+    <div class="row g-3">
+      {{ m.input('nome', 'Nome do grupo', required=True, col='col-md-8') }}
+      {{ m.select('tema', 'Tema', temas, required=True, col='col-md-4') }}
+      {{ m.textarea('descricao', 'Descrição', required=True, rows=3) }}
+      {{ m.textarea('regras', 'Regras do grupo', rows=4, help='Ex.: proibido spam, respeito entre os participantes, anúncios apenas às sextas.') }}
+      {{ m.input('municipio', 'Município (grupos regionais)', col='col-md-6') }}
+      {{ m.uf(required=False, col='col-md-2') }}
+      {{ m.file('capa', 'Imagem de capa', accept='image/jpeg,image/png,image/webp', col='col-md-4') }}
+    </div>
+    <div class="form-actions"><button class="btn btn-primary" type="submit">Salvar</button></div>
+  </form>
+</div></div>
+{% endblock %}

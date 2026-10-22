@@ -1,0 +1,42 @@
+{% extends "layouts/app.html" %}
+{% block title %}Registro sanitário{% endblock %}
+{% block content %}
+{{ m.page_head('Registro sanitário', 'Vacinação, vermifugação, tratamentos, exames e consultas.', back=url_for('saude.index')) }}
+<div class="card" style="max-width: 980px"><div class="card-body">
+  {{ m.form_errors() }}
+  <form method="post" novalidate>{{ m.csrf() }}
+    <div class="form-section">Aplicação</div>
+    <div class="row g-3">
+      {{ m.select('tipo', 'Tipo', tipos, required=True, col='col-md-4', empty=None) }}
+      {{ m.input('produto', 'Produto / procedimento', required=True, col='col-md-5', attrs='list="lista-produtos"') }}
+      <datalist id="lista-produtos">{% for p in ['Febre aftosa', 'Brucelose (B19)', 'Brucelose (RB51)', 'Raiva', 'Clostridioses', 'Leptospirose', 'IBR/BVD', 'Carbúnculo', 'Ivermectina', 'Vermífugo'] %}<option value="{{ p }}">{% endfor %}</datalist>
+      {{ m.input('data_aplicacao', 'Data', type='date', required=True, col='col-md-3') }}
+      {{ m.input('lote_produto', 'Partida / lote do produto', col='col-md-4') }}
+      {{ m.input('dose', 'Dose / via', col='col-md-4', placeholder='Ex.: 5 mL subcutânea') }}
+      {{ m.input('proxima_data', 'Próxima aplicação prevista', type='date', col='col-md-4', help='Gera alerta na agenda sanitária.') }}
+    </div>
+    <div class="form-section">Em quem foi aplicado</div>
+    <div class="row g-3">
+      {{ m.select('alvo', 'Aplicação', {'animal': 'Animal individual', 'lote': 'Lote inteiro', 'rebanho': 'Rebanho da propriedade'}, required=True, col='col-md-4', empty=None) }}
+      <div class="col-md-8" data-show-when="alvo=animal">{{ m.select('animal_id', 'Animal (brinco)', animais, col='') }}</div>
+      <div class="col-md-8" data-show-when="alvo=lote">{{ m.select('lote_id', 'Lote', lotes, col='') }}</div>
+    </div>
+    <div class="form-section">Responsáveis e estoque</div>
+    <div class="row g-3">
+      {{ m.input('responsavel', 'Responsável pela aplicação/registro', col='col-md-6') }}
+      {{ m.select('profissional_id', 'Profissional contratado (opcional)', profs, col='col-md-6', empty='Nenhum', help='Lista profissionais com contratação registrada por você na plataforma.') }}
+      {% if insumos %}
+      {{ m.select('insumo_id', 'Dar baixa no estoque (opcional)', insumos, col='col-md-6', empty='Não baixar') }}
+      {{ m.number('quantidade_insumo', 'Quantidade utilizada', col='col-md-6', help='Na unidade do insumo. Não gera nova despesa: o custo já foi lançado na compra.') }}
+      {% endif %}
+      {{ m.textarea('observacoes', 'Observações', rows=3) }}
+    </div>
+    <p class="small text-muted mt-3 mb-0">Tratamentos e medicamentos devem seguir a prescrição de um médico-veterinário habilitado, respeitando os períodos de carência.</p>
+    <div class="form-actions">
+      <a class="btn btn-outline-secondary" href="{{ url_for('saude.index') }}">Cancelar</a>
+      <button class="btn btn-outline-primary" type="submit" name="continuar" value="1">Salvar e registrar outro</button>
+      <button class="btn btn-primary" type="submit"><i class="bi bi-check2" aria-hidden="true"></i>Salvar</button>
+    </div>
+  </form>
+</div></div>
+{% endblock %}

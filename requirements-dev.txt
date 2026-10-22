@@ -1,0 +1,4 @@
+-r requirements.txt
+# Teste ponta a ponta da PWA em navegador real (usa o Microsoft Edge instalado; não baixa navegadores)
+playwright==1.64.0
+pyflakes

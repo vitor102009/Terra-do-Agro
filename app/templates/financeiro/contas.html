@@ -1,0 +1,23 @@
+{% extends "layouts/app.html" %}
+{% block title %}Contas a {{ tipo }}{% endblock %}
+{% block content %}
+{{ m.page_head('Contas a ' ~ tipo, 'Saldo em aberto: ' ~ (total|moeda)) }}
+{% include "financeiro/_nav.html" %}
+<div class="card">
+  {% if itens %}
+  <div class="table-responsive"><table class="table table-hover align-middle table-responsive-cards">
+    <thead><tr><th>Vencimento</th><th>Descrição</th><th>Categoria</th><th class="num">Total</th><th class="num">{{ 'Pago' if tipo == 'pagar' else 'Recebido' }}</th><th class="num">Em aberto</th><th></th></tr></thead>
+    <tbody>{% for l in itens %}
+      <tr>
+        <td data-label="Vencimento">{% if l.vencimento %}{{ l.vencimento|data_br }}{% if l.vencimento < hoje %} <span class="badge badge-soft-red">vencida</span>{% endif %}{% else %}<span class="text-muted">sem vencimento</span>{% endif %}</td>
+        <td data-label="Descrição"><a href="{{ url_for('financeiro.detalhe', lid=l.id) }}">{{ l.descricao }}</a>{% if l.contraparte %}<small class="d-block text-muted">{{ l.contraparte }}</small>{% endif %}</td>
+        <td data-label="Categoria">{{ l.categoria.nome }}</td>
+        <td class="num" data-label="Total">{{ l.valor|moeda }}</td>
+        <td class="num" data-label="Quitado">{{ l.valor_pago|moeda }}</td>
+        <td class="num fw-semibold" data-label="Em aberto">{{ l.saldo|moeda }}</td>
+        <td class="text-end" data-label=""><a class="btn btn-sm btn-primary" href="{{ url_for('financeiro.detalhe', lid=l.id) }}">{{ 'Pagar' if tipo == 'pagar' else 'Receber' }}</a></td>
+      </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}{{ m.empty('bi-check2-circle', 'Nenhuma conta a ' ~ tipo ~ ' em aberto') }}{% endif %}
+</div>
+{% endblock %}

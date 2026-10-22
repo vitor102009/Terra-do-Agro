@@ -1,0 +1,16 @@
+{% extends "layouts/public.html" %}
+{% block public %}
+<div style="background: var(--ta-bg); min-height: 100vh">
+  <header class="landing-hero" style="padding-bottom: 2rem">
+    <div class="container-xl">
+      <nav class="d-flex align-items-center justify-content-between py-2" aria-label="Navegação">
+        <a class="brand" href="{{ url_for('main.index') }}"><img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="40" height="40"><span><span class="brand-name d-block">TERRA <span>DO</span> AGRO</span><span class="brand-slogan d-block">A revolução digital do agro brasileiro</span></span></a>
+        <a class="btn btn-light-ghost" href="{{ url_for('main.dashboard') if current_user.is_authenticated else url_for('auth.login') }}">{{ 'Voltar ao painel' if current_user.is_authenticated else 'Entrar' }}</a>
+      </nav>
+    </div>
+  </header>
+  <main class="container-xl py-4" id="conteudo" style="max-width: 860px">
+    <div class="card"><div class="card-body p-4">{% block doc %}{% endblock %}</div></div>
+  </main>
+</div>
+{% endblock %}

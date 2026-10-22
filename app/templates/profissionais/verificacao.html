@@ -1,0 +1,33 @@
+{% extends "layouts/app.html" %}
+{% block title %}Verificação profissional{% endblock %}
+{% block content %}
+{{ m.page_head('Verificação profissional', p.categoria.nome ~ ' · ' ~ p.titulo, back=url_for('profissionais.meus')) }}
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card"><div class="card-body">
+      {% if p.verificado %}
+      <div class="alert alert-success mb-0">Este perfil está verificado desde {{ p.verificado_em|data_br }}.</div>
+      {% elif pendente %}
+      <div class="notice">Sua solicitação enviada em {{ pendente.created_at|data_br }} está em análise. Você será notificado quando houver resposta.</div>
+      {% else %}
+      <p>A verificação confirma que o registro profissional informado ({{ p.categoria.registro_label or 'qualificação' }}{% if p.registro_numero %}: {{ p.registro_numero }}/{{ p.registro_uf }}{% endif %}) corresponde a você. O selo só é exibido após análise manual da equipe.</p>
+      {{ m.form_errors() }}
+      <form method="post" enctype="multipart/form-data" novalidate>{{ m.csrf() }}
+        <div class="row g-3">
+          {{ m.file('documento', 'Documento comprobatório', accept='application/pdf,image/jpeg,image/png', help='Carteira profissional, certidão do conselho, diploma ou certificado. PDF, JPG ou PNG até 10 MB. Arquivo privado, visível apenas à equipe de verificação.') }}
+          {{ m.textarea('mensagem', 'Mensagem para a equipe (opcional)', rows=3) }}
+          <div class="col-12"><button class="btn btn-primary" type="submit">Enviar para verificação</button></div>
+        </div>
+      </form>
+      {% endif %}
+    </div></div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card"><div class="card-header"><h2>Histórico</h2></div>
+      {% if historico %}<ul class="list-group list-group-flush">{% for h in historico %}
+        <li class="list-group-item"><div class="d-flex justify-content-between">{{ h.created_at|data_br }} {{ m.situacao_badge('pendente_v' if h.status == 'pendente' else h.status, {'pendente': 'Em análise', 'aprovada': 'Aprovada', 'recusada': 'Recusada'}[h.status]) }}</div>{% if h.nota_admin %}<div class="small text-muted">{{ h.nota_admin }}</div>{% endif %}</li>
+      {% endfor %}</ul>{% else %}<div class="card-body small text-muted">Nenhuma solicitação anterior.</div>{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

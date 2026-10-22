@@ -1,0 +1,27 @@
+{% extends "layouts/app.html" %}
+{% block title %}Feed rural{% endblock %}
+{% block content %}
+{{ m.page_head('Feed rural', 'Experiências, dicas e novidades de quem vive o campo.') }}
+<div class="row g-3">
+  <div class="col-lg-8">
+    {% include "feed/_composer.html" %}
+    <div class="chips-scroll mb-3">
+      <a class="cat-chip {% if not args.get('tipo') %}active{% endif %}" href="{{ url_for('feed.index') }}">Tudo</a>
+      {% for k, r in tipos.items() %}<a class="cat-chip {% if args.get('tipo') == k %}active{% endif %}" href="{{ url_for('feed.index', tipo=k) }}">{{ r }}</a>{% endfor %}
+    </div>
+    {% for p in pag.items %}{% include "feed/_post.html" %}
+    {% else %}<div class="card">{{ m.empty('bi-newspaper', 'Nenhuma publicação ainda', 'Seja o primeiro a compartilhar algo com a comunidade.') }}</div>{% endfor %}
+    {{ m.pagination(pag, 'feed.index') }}
+  </div>
+  <aside class="col-lg-4">
+    <div class="card mb-3"><div class="card-header"><h2>Meus grupos</h2><a class="small" href="{{ url_for('comunidade.index') }}">Ver todos</a></div>
+      {% if meus_grupos %}<div class="list-group list-group-flush">{% for gr in meus_grupos %}<a class="list-group-item list-group-item-action" href="{{ url_for('comunidade.grupo', gid=gr.id) }}">{{ gr.nome }}<small class="d-block text-muted">{{ gr.tema_label }}</small></a>{% endfor %}</div>
+      {% else %}<div class="card-body small text-muted">Participe de grupos de pecuária, agricultura, máquinas e mais.</div>{% endif %}
+    </div>
+    <div class="card"><div class="card-body small text-muted">
+      <h2 class="h6 text-body">Boas práticas</h2>
+      Respeite os outros participantes, não exponha dados pessoais de terceiros e identifique conteúdos comerciais. Publicações que violem as regras podem ser removidas pela moderação.
+    </div></div>
+  </aside>
+</div>
+{% endblock %}

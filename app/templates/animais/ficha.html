@@ -1,0 +1,155 @@
+{% extends "layouts/app.html" %}
+{% block title %}Animal {{ a.identificacao }}{% endblock %}
+{% block content %}
+{% call m.page_head('Animal ' ~ a.identificacao, (a.nome ~ ' · ' if a.nome and a.brinco else '') ~ especies.get(a.especie) ~ (' · ' ~ a.raca if a.raca else '') ~ ' · ' ~ sexos.get(a.sexo), back=url_for('animais.index')) %}
+  {% if pode('editar') %}
+    {% if a.ativo %}
+    <a class="btn btn-gold" href="{{ url_for('pesagens.nova', animal=a.id) }}"><i class="bi bi-speedometer" aria-hidden="true"></i>Pesagem</a>
+    <a class="btn btn-outline-primary" href="{{ url_for('saude.novo', animal=a.id) }}"><i class="bi bi-shield-plus" aria-hidden="true"></i>Sanidade</a>
+    {% if a.sexo == 'F' %}<a class="btn btn-outline-primary" href="{{ url_for('reproducao.novo', animal=a.id) }}"><i class="bi bi-gender-female" aria-hidden="true"></i>Reprodução</a>{% endif %}
+    {% endif %}
+    <a class="btn btn-outline-primary" href="{{ url_for('animais.movimentar', aid=a.id) }}"><i class="bi bi-arrow-left-right" aria-hidden="true"></i>{{ 'Movimentar' if a.ativo else 'Reativar' }}</a>
+    <a class="btn btn-outline-primary" href="{{ url_for('animais.editar', aid=a.id) }}"><i class="bi bi-pencil" aria-hidden="true"></i>Editar</a>
+  {% endif %}
+{% endcall %}
+
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="card mb-3">
+      {% if a.foto %}<img src="{{ url_for('animais.foto', aid=a.id) }}" alt="Fotografia do animal {{ a.identificacao }}" class="card-img-top" style="max-height: 260px; object-fit: cover">{% endif %}
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <span class="display-6 fw-bold" style="color: var(--ta-green-dark)">{{ a.identificacao }}</span>
+          {{ m.situacao_badge(a.status, status_opcoes.get(a.status)) }}
+        </div>
+        <dl class="dl-grid">
+          <div><dt>Categoria</dt><dd>{{ a.categoria or '—' }}</dd></div>
+          <div><dt>Lote</dt><dd>{% if a.lote %}<a href="{{ url_for('lotes.detalhe', lid=a.lote.id) }}">{{ a.lote.nome }}</a>{% else %}—{% endif %}</dd></div>
+          <div><dt>Nascimento</dt><dd>{{ a.data_nascimento|data_br }}{% if a.nascimento_estimado %} (estimado){% endif %}</dd></div>
+          <div><dt>Idade</dt><dd>{{ a.data_nascimento|idade }}</dd></div>
+          <div><dt>Origem</dt><dd>{{ origens.get(a.origem) }}</dd></div>
+          <div><dt>Entrada</dt><dd>{{ a.data_entrada|data_br }}</dd></div>
+          {% if a.data_saida %}<div><dt>Saída</dt><dd>{{ a.data_saida|data_br }}</dd></div>{% endif %}
+          <div><dt>Situação produtiva</dt><dd>{{ produtivas.get(a.situacao_produtiva, '—') }}</dd></div>
+          <div><dt>Situação reprodutiva</dt><dd>{{ reprodutivas.get(a.situacao_reprodutiva) }}</dd></div>
+          <div><dt>Situação sanitária</dt><dd>{{ sanitarias.get(a.situacao_sanitaria) }}</dd></div>
+          <div><dt>Mãe</dt><dd>{% if a.mae %}<a href="{{ url_for('animais.ficha', aid=a.mae.id) }}">{{ a.mae.identificacao }}</a>{% else %}—{% endif %}</dd></div>
+          <div><dt>Pai / reprodutor</dt><dd>{{ a.pai_descricao or '—' }}</dd></div>
+        </dl>
+        {% if a.observacoes %}<hr><p class="small text-pre mb-0">{{ a.observacoes }}</p>{% endif %}
+        {% if crias %}<hr><div class="small"><span class="fw-semibold">Crias:</span> {% for c in crias %}<a href="{{ url_for('animais.ficha', aid=c.id) }}">{{ c.identificacao }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</div>{% endif %}
+      </div>
+    </div>
+    <div class="card mb-3">
+      <div class="card-header"><h2>Movimentações</h2></div>
+      <div class="card-body">
+        <ul class="timeline">
+          {% for mv in a.movimentacoes %}
+          <li class="{% if loop.first %}current{% endif %}">
+            <div class="fw-semibold small">{{ tipos_mov.get(mv.tipo) }} · {{ mv.data|data_br }}</div>
+            <div class="small text-muted">
+              {% if mv.tipo == 'troca_lote' %}{{ mv.lote_origem.nome if mv.lote_origem else 'Sem lote' }} → {{ mv.lote_destino.nome if mv.lote_destino else 'Sem lote' }}{% endif %}
+              {% if mv.destino %}{{ mv.destino }}{% endif %}
+              {% if mv.valor and pode('financeiro') %} · {{ mv.valor|moeda }}{% endif %}
+              {% if mv.observacao %}<span class="d-block">{{ mv.observacao }}</span>{% endif %}
+              <span class="d-block">por {{ mv.autor.nome if mv.autor else '—' }}</span>
+            </div>
+          </li>
+          {% else %}<li class="text-muted small">Sem movimentações.</li>{% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="row g-3 mb-3">
+      <div class="col-6 col-md-3"><div class="card kpi"><div class="label"><i class="bi bi-speedometer" aria-hidden="true"></i>Peso atual</div><div class="value">{{ (a.peso_atual|numero(1) ~ ' kg') if a.peso_atual is not none else '—' }}</div><div class="hint">{{ a.data_peso_atual|data_br if a.data_peso_atual else 'sem pesagem' }}</div></div></div>
+      <div class="col-6 col-md-3"><div class="card kpi"><div class="label"><i class="bi bi-list-ol" aria-hidden="true"></i>Pesagens</div><div class="value">{{ qtd_pesagens }}</div></div></div>
+      <div class="col-6 col-md-3"><div class="card kpi kpi-gold"><div class="label"><i class="bi bi-graph-up" aria-hidden="true"></i>GMD do histórico</div><div class="value">{% if gmd %}{{ gmd.gmd|numero(3) }}{% else %}—{% endif %}</div><div class="hint">{% if gmd %}kg/dia em {{ gmd.dias }} dias{% else %}dados insuficientes{% endif %}</div></div></div>
+      <div class="col-6 col-md-3"><div class="card kpi"><div class="label"><i class="bi bi-plus-slash-minus" aria-hidden="true"></i>Ganho total</div><div class="value">{% if gmd %}{{ gmd.ganho|numero(1) }} kg{% else %}—{% endif %}</div></div></div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header"><h2>Evolução de peso</h2></div>
+      <div class="card-body">
+        {% if qtd_pesagens >= 2 %}
+          <div class="chart-box sm"><canvas role="img" aria-label="Evolução de peso do animal" data-chart='{{ grafico|tojson }}'></canvas></div>
+        {% elif qtd_pesagens == 1 %}<p class="text-muted mb-0">Uma pesagem registrada. O gráfico aparece a partir da segunda.</p>
+        {% else %}{{ m.empty('bi-speedometer', 'Nenhuma pesagem registrada', None, url_for('pesagens.nova', animal=a.id) if pode('editar') and a.ativo else None, 'Registrar pesagem') }}{% endif %}
+        {% if variacoes %}
+        <div class="table-responsive mt-3">
+          <table class="table table-sm align-middle table-responsive-cards">
+            <thead><tr><th>Data</th><th class="num">Peso</th><th class="num">Variação</th><th class="num">Intervalo</th><th class="num">Ganho diário</th><th>Responsável</th></tr></thead>
+            <tbody>
+            {% for p, dif, dias, gd in variacoes %}
+              <tr>
+                <td data-label="Data">{{ p.data|data_br }}</td>
+                <td class="num" data-label="Peso">{{ p.peso_kg|numero(1) }} kg</td>
+                <td class="num {{ 'value-pos' if dif and dif > 0 else ('value-neg' if dif and dif < 0 else '') }}" data-label="Variação">{% if dif is not none %}{{ '+' if dif > 0 else '' }}{{ dif|numero(1) }} kg{% else %}—{% endif %}</td>
+                <td class="num" data-label="Intervalo">{{ (dias ~ ' dias') if dias is not none else '—' }}</td>
+                <td class="num" data-label="Ganho diário">{{ (gd|numero(3) ~ ' kg') if gd is not none else '—' }}</td>
+                <td data-label="Responsável">{{ p.responsavel or (p.autor.nome if p.autor else '—') }}</td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <p class="small text-muted mb-0">GMD do histórico = (último peso − primeiro peso) ÷ dias entre as pesagens. Exige ao menos 7 dias de intervalo.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header"><h2>Histórico sanitário</h2>{% if pode('editar') and a.ativo %}<a class="small" href="{{ url_for('saude.novo', animal=a.id) }}">Registrar</a>{% endif %}</div>
+      {% if sanitarios %}
+      <div class="table-responsive">
+        <table class="table table-sm align-middle table-responsive-cards">
+          <thead><tr><th>Data</th><th>Tipo</th><th>Produto</th><th>Aplicação</th><th>Próxima</th></tr></thead>
+          <tbody>{% for s in sanitarios %}
+            <tr><td data-label="Data">{{ s.data_aplicacao|data_br }}</td><td data-label="Tipo">{{ s.tipo_label }}</td><td data-label="Produto">{{ s.produto }}{% if s.dose %} <small class="text-muted">{{ s.dose }}</small>{% endif %}</td>
+              <td data-label="Aplicação">{{ 'Individual' if s.animal_id else 'Lote ' ~ s.lote.nome }}</td><td data-label="Próxima">{{ s.proxima_data|data_br }}</td></tr>
+          {% endfor %}</tbody>
+        </table>
+      </div>
+      {% else %}<div class="card-body"><p class="text-muted small mb-0">Nenhum registro sanitário para este animal ou seu lote atual.</p></div>{% endif %}
+    </div>
+
+    {% if a.sexo == 'F' %}
+    <div class="card mb-3">
+      <div class="card-header"><h2>Histórico reprodutivo</h2>{% if pode('editar') and a.ativo %}<a class="small" href="{{ url_for('reproducao.novo', animal=a.id) }}">Registrar</a>{% endif %}</div>
+      {% if reprodutivos %}
+      <div class="card-body"><ul class="timeline">
+        {% for r in reprodutivos %}
+        <li class="{% if loop.first %}current{% endif %}">
+          <div class="fw-semibold small">{{ r.tipo_label }} · {{ r.data|data_br }}</div>
+          <div class="small text-muted">
+            {% if r.reprodutor %}Reprodutor: {{ r.reprodutor.identificacao }}{% elif r.reprodutor_descricao %}Reprodutor/sêmen: {{ r.reprodutor_descricao }}{% endif %}
+            {% if r.diagnostico_resultado %}Resultado: {{ {'positivo': 'Positivo', 'negativo': 'Negativo', 'inconclusivo': 'Inconclusivo'}[r.diagnostico_resultado] }}{% endif %}
+            {% if r.previsao_parto %}<span class="d-block">Previsão estimada de parto: {{ r.previsao_parto|data_br }}</span>{% endif %}
+            {% if r.cria %}<span class="d-block">Cria: <a href="{{ url_for('animais.ficha', aid=r.cria.id) }}">{{ r.cria.identificacao }}</a></span>{% endif %}
+            {% if r.responsavel %}<span class="d-block">Responsável: {{ r.responsavel }}</span>{% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul></div>
+      {% else %}<div class="card-body"><p class="text-muted small mb-0">Nenhum evento reprodutivo registrado.</p></div>{% endif %}
+    </div>
+    {% endif %}
+
+    {% if pode('financeiro') and financeiros %}
+    <div class="card mb-3">
+      <div class="card-header"><h2>Lançamentos vinculados</h2></div>
+      <ul class="list-group list-group-flush">
+        {% for l in financeiros %}
+        <li class="list-group-item d-flex justify-content-between"><a href="{{ url_for('financeiro.detalhe', lid=l.id) }}">{{ l.descricao }}</a><span class="{{ 'value-pos' if l.tipo == 'receita' else 'value-neg' }} fw-semibold">{{ l.valor|moeda }}</span></li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+{% endblock %}

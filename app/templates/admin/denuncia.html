@@ -1,0 +1,39 @@
+{% extends "admin/_base.html" %}
+{% from "admin/_mod.html" import moderar with context %}
+{% block title %}Denúncia · Administração{% endblock %}
+{% block admin %}
+{{ m.page_head('Denúncia #' ~ d.id, alvos.get(d.alvo_tipo) ~ ' #' ~ d.alvo_id ~ ' · ' ~ motivos.get(d.motivo), back=url_for('admin.denuncias')) }}
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card mb-3"><div class="card-header"><h2>Relato</h2></div><div class="card-body">
+      <p class="small text-muted mb-1">Por {{ d.autor.nome if d.autor else 'usuário removido' }} em {{ d.created_at|datahora_br }}</p>
+      <p class="text-pre mb-0">{{ d.descricao or 'Sem descrição.' }}</p>
+    </div></div>
+    <div class="card"><div class="card-header"><h2>Conteúdo denunciado</h2></div><div class="card-body">
+      {% if not info.existe %}<p class="text-muted mb-0">O conteúdo não existe mais.</p>
+      {% else %}
+        <p class="text-pre">{{ info.resumo }}</p>
+        {% if info.autor %}<p class="small">Autor: <a href="{{ url_for('admin.usuario', uid=info.autor.id) }}">{{ info.autor.nome }}</a></p>{% endif %}
+        {% if info.link %}<a class="btn btn-sm btn-outline-primary" href="{{ info.link }}" target="_blank" rel="noopener">Abrir na plataforma</a>{% endif %}
+        {% if d.alvo_tipo in ('anuncio', 'post', 'comentario', 'avaliacao', 'grupo', 'vaga') %}
+        <div class="mt-3">{{ moderar(d.alvo_tipo, d.alvo_id, info.removido) }}</div>
+        {% elif d.alvo_tipo == 'usuario' and info.autor %}
+        <a class="btn btn-sm btn-outline-danger mt-3" href="{{ url_for('admin.usuario', uid=info.autor.id) }}">Gerenciar conta</a>
+        {% elif d.alvo_tipo == 'perfil' %}
+        <form class="mt-3" method="post" action="{{ url_for('admin.perfil_acao', pid=d.alvo_id) }}">{{ m.csrf() }}<button class="btn btn-sm btn-outline-danger" name="acao" value="ocultar" type="submit">Ocultar perfil</button></form>
+        {% endif %}
+      {% endif %}
+    </div></div>
+  </div>
+  <div class="col-lg-5">
+    {% if d.status == 'aberta' %}
+    <div class="card"><div class="card-header"><h2>Resolver</h2></div><div class="card-body">
+      <form method="post">{{ m.csrf() }}
+        <label class="form-label" for="nota">Nota da resolução</label><textarea class="form-control mb-3" id="nota" name="nota" rows="3"></textarea>
+        <div class="d-flex gap-2"><button class="btn btn-outline-danger flex-fill" name="decisao" value="procedente" type="submit">Procedente</button><button class="btn btn-outline-secondary flex-fill" name="decisao" value="improcedente" type="submit">Improcedente</button></div>
+      </form>
+    </div></div>
+    {% else %}<div class="card"><div class="card-body small">Resolvida como <strong>{{ d.status }}</strong>.{% if d.nota_resolucao %}<p class="mb-0 mt-1">{{ d.nota_resolucao }}</p>{% endif %}</div></div>{% endif %}
+  </div>
+</div>
+{% endblock %}

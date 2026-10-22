@@ -1,0 +1,20 @@
+{% extends "admin/_base.html" %}
+{% block title %}Propriedades · Administração{% endblock %}
+{% block admin %}
+<p class="notice">Por privacidade, a administração vê apenas dados gerais. Localização detalhada, rebanho individual e financeiro das propriedades não são exibidos aqui.</p>
+<form class="filters" method="get"><div class="row g-2 align-items-end">
+  <div class="col-12 col-md-5"><label class="form-label" for="q">Nome ou município</label><input class="form-control" id="q" name="q" value="{{ args.get('q', '') }}"></div>
+  <div class="col-6 col-md-2"><button class="btn btn-primary w-100" type="submit">Buscar</button></div>
+</div></form>
+<div class="card"><div class="table-responsive"><table class="table align-middle table-responsive-cards">
+  <thead><tr><th>Propriedade</th><th>Responsável</th><th>Atividade</th><th class="num">Animais</th><th class="num">Pessoas</th><th>Situação</th></tr></thead>
+  <tbody>{% for p in pag.items %}<tr>
+    <td data-label="Propriedade">{{ p.nome }}<small class="d-block text-muted">{{ p.municipio }}/{{ p.uf }} · desde {{ p.created_at|data_br }}</small></td>
+    <td data-label="Responsável"><a href="{{ url_for('admin.usuario', uid=p.owner_id) }}">{{ p.owner.nome }}</a></td>
+    <td data-label="Atividade">{{ p.atividade_label }}</td>
+    <td class="num" data-label="Animais">{{ animais.get(p.id, 0) }}</td>
+    <td class="num" data-label="Pessoas">{{ membros.get(p.id, 0) }}</td>
+    <td data-label="Situação">{% if p.arquivada %}<form method="post" action="{{ url_for('admin.restaurar_propriedade', pid=p.id) }}" data-confirm="Restaurar a propriedade {{ p.nome }}?">{{ m.csrf() }}<span class="badge badge-soft-gray">Arquivada</span> <button class="btn btn-sm btn-link" type="submit">Restaurar</button></form>{% else %}<span class="badge badge-soft-green">Ativa</span>{% endif %}{% if p.is_demo %} <span class="badge badge-demo">demo</span>{% endif %}</td>
+  </tr>{% endfor %}</tbody></table></div></div>
+{{ m.pagination(pag, 'admin.propriedades') }}
+{% endblock %}

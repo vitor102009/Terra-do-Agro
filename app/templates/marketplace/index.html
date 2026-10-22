@@ -1,0 +1,31 @@
+{% extends "layouts/app.html" %}
+{% block title %}Marketplace{% endblock %}
+{% block content %}
+{% call m.page_head('Marketplace agropecuário', 'Animais, máquinas, insumos, produtos e serviços do campo. Negociação direta entre as partes pelo chat.') %}
+  <a class="btn btn-outline-primary" href="{{ url_for('marketplace.favoritos') }}"><i class="bi bi-heart" aria-hidden="true"></i>Favoritos</a>
+  <a class="btn btn-outline-primary" href="{{ url_for('marketplace.meus') }}"><i class="bi bi-megaphone" aria-hidden="true"></i>Meus anúncios</a>
+  <a class="btn btn-gold" href="{{ url_for('marketplace.novo') }}"><i class="bi bi-plus-lg" aria-hidden="true"></i>Anunciar</a>
+{% endcall %}
+<div class="chips-scroll mb-3" role="navigation" aria-label="Categorias">
+  <a class="cat-chip {% if not args.get('categoria') %}active{% endif %}" href="{{ url_for('marketplace.index') }}"><i class="bi bi-grid" aria-hidden="true"></i>Todas</a>
+  {% for k, r in categorias.items() %}<a class="cat-chip {% if args.get('categoria') == k %}active{% endif %}" href="{{ url_for('marketplace.index', categoria=k) }}"><i class="bi {{ icones[k] }}" aria-hidden="true"></i>{{ r }}</a>{% endfor %}
+</div>
+<form class="filters" method="get">
+  {% if args.get('categoria') %}<input type="hidden" name="categoria" value="{{ args.get('categoria') }}">{% endif %}
+  <div class="row g-2 align-items-end">
+    <div class="col-12 col-md-4"><label class="form-label" for="q">O que você procura?</label><input class="form-control" id="q" name="q" value="{{ args.get('q', '') }}" placeholder="Ex.: novilhas nelore, plantadeira, sal mineral"></div>
+    <div class="col-6 col-md-2"><label class="form-label" for="municipio">Município</label><input class="form-control" id="municipio" name="municipio" value="{{ args.get('municipio', '') }}"></div>
+    <div class="col-6 col-md-1"><label class="form-label" for="uf">UF</label><select class="form-select" id="uf" name="uf"><option value="">—</option>{% for u in ufs %}<option {% if args.get('uf') == u %}selected{% endif %}>{{ u }}</option>{% endfor %}</select></div>
+    <div class="col-4 col-md-1"><label class="form-label" for="preco_min">R$ mín.</label><input class="form-control" id="preco_min" name="preco_min" inputmode="decimal" value="{{ args.get('preco_min', '') }}"></div>
+    <div class="col-4 col-md-1"><label class="form-label" for="preco_max">R$ máx.</label><input class="form-control" id="preco_max" name="preco_max" inputmode="decimal" value="{{ args.get('preco_max', '') }}"></div>
+    <div class="col-4 col-md-2"><label class="form-label" for="ordem">Ordenar</label><select class="form-select" id="ordem" name="ordem"><option value="">Mais recentes</option><option value="menor_preco" {% if args.get('ordem') == 'menor_preco' %}selected{% endif %}>Menor preço</option><option value="maior_preco" {% if args.get('ordem') == 'maior_preco' %}selected{% endif %}>Maior preço</option></select></div>
+    <div class="col-12 col-md-1"><button class="btn btn-primary w-100" type="submit" aria-label="Buscar"><i class="bi bi-search" aria-hidden="true"></i></button></div>
+  </div>
+</form>
+<div class="row g-3">
+  {% for an in pag.items %}<div class="col-6 col-md-4 col-xl-3">{% include "marketplace/_card.html" %}</div>
+  {% else %}<div class="col-12"><div class="card">{{ m.empty('bi-shop', 'Nenhum anúncio encontrado', 'Ajuste os filtros ou publique o primeiro anúncio desta categoria.', url_for('marketplace.novo', categoria=args.get('categoria', '')), 'Anunciar') }}</div></div>{% endfor %}
+</div>
+{{ m.pagination(pag, 'marketplace.index') }}
+<p class="small text-muted mt-3">O Terra do Agro não intermedeia pagamentos nem entregas. Confira o produto, a documentação (como GTA para animais) e a idoneidade do anunciante antes de fechar negócio.</p>
+{% endblock %}

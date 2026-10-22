@@ -1,0 +1,22 @@
+{% extends "layouts/app.html" %}
+{% block title %}{{ 'Editar lote' if lote else 'Novo lote' }}{% endblock %}
+{% block content %}
+{{ m.page_head('Editar lote' if lote else 'Novo lote', propriedade_atual.nome, back=url_for('lotes.detalhe', lid=lote.id) if lote else url_for('lotes.index')) }}
+<div class="card" style="max-width: 760px"><div class="card-body">
+  {{ m.form_errors() }}
+  <form method="post" novalidate>{{ m.csrf() }}
+    <div class="row g-3">
+      {{ m.input('nome', 'Nome do lote', required=True, col='col-md-6') }}
+      {{ m.input('finalidade', 'Finalidade', col='col-md-6', placeholder='Ex.: recria de novilhas, engorda, vacas em lactação', attrs='list="lista-finalidades"') }}
+      <datalist id="lista-finalidades">{% for f in ['Cria', 'Recria', 'Engorda', 'Terminação', 'Vacas em lactação', 'Vacas secas', 'Reprodução', 'Bezerros'] %}<option value="{{ f }}">{% endfor %}</datalist>
+      {{ m.select('pastagem_id', 'Pastagem atual', pastagens, empty='Não associado', col='col-md-6') }}
+      {% if lote %}<div class="col-md-6 d-flex align-items-end">{{ m.checkbox('ativo', 'Lote ativo', col='') }}</div>{% endif %}
+      {{ m.textarea('descricao', 'Descrição', rows=3) }}
+    </div>
+    <div class="form-actions">
+      <a class="btn btn-outline-secondary" href="{{ url_for('lotes.index') }}">Cancelar</a>
+      <button class="btn btn-primary" type="submit">Salvar</button>
+    </div>
+  </form>
+</div></div>
+{% endblock %}

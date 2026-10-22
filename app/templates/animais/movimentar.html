@@ -1,0 +1,35 @@
+{% extends "layouts/app.html" %}
+{% block title %}Movimentar animal {{ a.identificacao }}{% endblock %}
+{% block content %}
+{{ m.page_head(('Movimentar' if a.ativo else 'Reativar') ~ ' animal ' ~ a.identificacao, 'O histórico é preservado: saídas não apagam o registro do animal.', back=url_for('animais.ficha', aid=a.id)) }}
+<div class="card" style="max-width: 760px"><div class="card-body">
+  {{ m.form_errors() }}
+  <form method="post" novalidate>
+    {{ m.csrf() }}
+    <div class="row g-3">
+      {{ m.select('tipo', 'Tipo de movimentação', opcoes, required=True, col='col-md-6', empty=None) }}
+      {{ m.input('data', 'Data', type='date', required=True, col='col-md-6') }}
+      <div class="col-12" data-show-when="tipo=troca_lote">
+        <div class="row g-3">{{ m.select('lote_destino_id', 'Lote de destino', lotes, col='col-md-6') }}</div>
+      </div>
+      <div class="col-12" data-show-when="tipo=venda,transferencia">
+        <div class="row g-3">
+          {{ m.input('destino', 'Comprador ou destino', col='col-md-6') }}
+          <div class="col-md-6" data-show-when="tipo=venda">{{ m.money('valor', 'Valor da venda (R$)', col='') }}</div>
+        </div>
+      </div>
+      {% if pode('financeiro') %}
+      <div class="col-12" data-show-when="tipo=venda">
+        {{ m.checkbox('gerar_receita', 'Lançar a venda como receita no financeiro', help='Cria um único lançamento vinculado ao animal. Não lance a mesma venda novamente no financeiro.') }}
+        {{ m.checkbox('recebido', 'O valor já foi recebido') }}
+      </div>
+      {% endif %}
+      {{ m.textarea('observacao', 'Observações', rows=3) }}
+    </div>
+    <div class="form-actions">
+      <a class="btn btn-outline-secondary" href="{{ url_for('animais.ficha', aid=a.id) }}">Cancelar</a>
+      <button class="btn btn-primary" type="submit">Registrar movimentação</button>
+    </div>
+  </form>
+</div></div>
+{% endblock %}

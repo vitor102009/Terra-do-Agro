@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Sem conexão · Terra do Agro</title>
+  <meta name="theme-color" content="#073817">
+  <link rel="icon" href="/static/img/logo-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="/static/vendor/bootstrap-icons/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="/static/css/terra.css">
+</head>
+<body>
+  <!-- Página genérica servida pelo Service Worker quando não há conexão. Não contém dados de usuário. -->
+  <main class="error-page" id="conteudo">
+    <div class="inner">
+      <a class="brand justify-content-center mb-4" href="/">
+        <img src="/static/img/logo-mark.svg" alt="" width="48" height="48">
+        <span class="text-start"><span class="brand-name d-block">TERRA <span>DO</span> AGRO</span><span class="brand-slogan d-block">A revolução digital do agro brasileiro</span></span>
+      </a>
+      <div class="code" aria-hidden="true"><i class="bi bi-wifi-off"></i></div>
+      <h1>Você está sem conexão</h1>
+      <p>Esta página precisa de internet. Você ainda pode consultar os dados já sincronizados neste aparelho e registrar pesagens, vacinas e tarefas para enviar depois.</p>
+      <div class="d-flex flex-wrap justify-content-center gap-2">
+        <a class="btn btn-gold btn-lg" href="/app-offline"><i class="bi bi-cloud-arrow-down" aria-hidden="true"></i>Abrir modo offline</a>
+        <button class="btn btn-light-ghost btn-lg" type="button" data-action="reload"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i>Tentar novamente</button>
+      </div>
+    </div>
+    <img class="art" src="/static/img/campo.svg" alt="" aria-hidden="true">
+  </main>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

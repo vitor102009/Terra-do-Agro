@@ -1,0 +1,12 @@
+{% extends "layouts/app.html" %}
+{% block title %}{{ ch.assunto }}{% endblock %}
+{% block content %}
+{% call m.page_head(ch.assunto, tipos.get(ch.tipo) ~ ' · aberto em ' ~ (ch.created_at|datahora_br), back=url_for('conta.suporte')) %}{{ m.situacao_badge(ch.status, ch.status|capitalize) }}{% endcall %}
+<div class="card mb-3" style="max-width: 800px"><div class="card-body"><p class="text-pre mb-0">{{ ch.mensagem }}</p></div></div>
+{% if ch.resposta %}
+<div class="card" style="max-width: 800px; border-left: 4px solid var(--ta-gold)"><div class="card-body">
+  <div class="small text-muted mb-1">Resposta da equipe · {{ ch.respondido_em|datahora_br }}</div>
+  <p class="text-pre mb-0">{{ ch.resposta }}</p>
+</div></div>
+{% else %}<p class="text-muted small">Aguardando resposta da equipe.</p>{% endif %}
+{% endblock %}

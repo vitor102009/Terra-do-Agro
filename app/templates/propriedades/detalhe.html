@@ -1,0 +1,46 @@
+{% extends "layouts/app.html" %}
+{% block title %}{{ prop.nome }}{% endblock %}
+{% block content %}
+{% call m.page_head(prop.nome, prop.municipio ~ '/' ~ prop.uf ~ ' · ' ~ prop.atividade_label, back=url_for('propriedades.index')) %}
+  {% if not (propriedade_atual and prop.id == propriedade_atual.id) %}
+  <form method="post" action="{{ url_for('propriedades.ativar', pid=prop.id) }}">{{ m.csrf() }}<input type="hidden" name="next" value="{{ url_for('main.dashboard') }}"><button class="btn btn-primary" type="submit">Tornar ativa</button></form>
+  {% endif %}
+  {% if 'membros' in mb.perms %}
+  <a class="btn btn-outline-primary" href="{{ url_for('propriedades.membros', pid=prop.id) }}"><i class="bi bi-people" aria-hidden="true"></i>Acessos</a>
+  <a class="btn btn-outline-primary" href="{{ url_for('propriedades.editar', pid=prop.id) }}"><i class="bi bi-pencil" aria-hidden="true"></i>Editar</a>
+  {% endif %}
+{% endcall %}
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card"><div class="card-body">
+      <dl class="dl-grid">
+        <div><dt>Área total</dt><dd>{{ (prop.area_total_ha|numero(2) ~ ' ha') if prop.area_total_ha is not none else '—' }}</dd></div>
+        <div><dt>Pastagem</dt><dd>{{ (prop.area_pastagem_ha|numero(2) ~ ' ha') if prop.area_pastagem_ha is not none else '—' }}</dd></div>
+        <div><dt>Agricultura</dt><dd>{{ (prop.area_agricultura_ha|numero(2) ~ ' ha') if prop.area_agricultura_ha is not none else '—' }}</dd></div>
+        <div><dt>Animais (aprox.)</dt><dd>{{ prop.qtd_animais_aprox if prop.qtd_animais_aprox is not none else '—' }}</dd></div>
+        <div><dt>Tipo de produção</dt><dd>{{ prop.tipo_producao or '—' }}</dd></div>
+        <div><dt>Responsável</dt><dd>{{ prop.owner.nome }}</dd></div>
+      </dl>
+      {% if prop.informacoes %}<hr><p class="text-pre mb-0">{{ prop.informacoes }}</p>{% endif %}
+    </div></div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card"><div class="card-header"><h2><i class="bi bi-lock text-gold me-1" aria-hidden="true"></i>Localização privada</h2></div>
+      <div class="card-body">
+        <p class="mb-1">{{ prop.endereco or 'Endereço não informado' }}</p>
+        {% if prop.latitude is not none %}<p class="small text-muted mb-0">Coordenadas: {{ prop.latitude }}, {{ prop.longitude }}</p>{% endif %}
+        <p class="small text-muted mt-2 mb-0">Visível somente para pessoas com acesso a esta propriedade.</p>
+      </div>
+    </div>
+    {% if 'excluir' in mb.perms %}
+    <div class="card mt-3"><div class="card-body">
+      <h2 class="h6">Arquivar propriedade</h2>
+      <p class="small text-muted">A propriedade sai das listas, mas todo o histórico é preservado.</p>
+      <form method="post" action="{{ url_for('propriedades.arquivar', pid=prop.id) }}" data-confirm="Arquivar a propriedade {{ prop.nome }}? Os dados serão preservados.">
+        {{ m.csrf() }}<button class="btn btn-sm btn-outline-danger" type="submit">Arquivar</button>
+      </form>
+    </div></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

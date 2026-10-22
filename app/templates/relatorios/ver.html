@@ -1,0 +1,33 @@
+{% extends "layouts/app.html" %}
+{% block title %}{{ meta.titulo }}{% endblock %}
+{% block content %}
+<div class="print-only mb-3">
+  <div class="d-flex align-items-center gap-2"><img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="36" height="36"><strong>TERRA DO AGRO</strong></div>
+</div>
+{% call m.page_head(meta.titulo, propriedade_atual.nome ~ ' · ' ~ (inicio|data_br) ~ ' a ' ~ (fim|data_br), back=url_for('relatorios.index', inicio=inicio, fim=fim)) %}
+  {% set a = request.args.to_dict() %}{% set _ = a.update({'formato': 'csv'}) %}
+  <a class="btn btn-outline-primary" href="{{ url_for('relatorios.ver', tipo=tipo, **a) }}"><i class="bi bi-filetype-csv" aria-hidden="true"></i>Exportar CSV</a>
+  <button class="btn btn-primary" type="button" data-action="print"><i class="bi bi-printer" aria-hidden="true"></i>Imprimir / PDF</button>
+{% endcall %}
+<form class="filters" method="get">
+  <div class="row g-2 align-items-end">
+    <div class="col-6 col-md-3"><label class="form-label" for="inicio">Data inicial</label><input class="form-control" type="date" id="inicio" name="inicio" value="{{ inicio.isoformat() }}"></div>
+    <div class="col-6 col-md-3"><label class="form-label" for="fim">Data final</label><input class="form-control" type="date" id="fim" name="fim" value="{{ fim.isoformat() }}"></div>
+    {% if tipo in ('inventario', 'pesagens') %}
+    <div class="col-6 col-md-3"><label class="form-label" for="lote">Lote</label><select class="form-select" id="lote" name="lote"><option value="">Todos</option>{% for l in lotes %}<option value="{{ l.id }}" {% if request.args.get('lote') == l.id|string %}selected{% endif %}>{{ l.nome }}</option>{% endfor %}</select></div>
+    {% endif %}
+    <div class="col-6 col-md-3"><button class="btn btn-primary w-100" type="submit">Atualizar</button></div>
+  </div>
+</form>
+<div class="card">
+  {% if rel.linhas %}
+  <div class="table-responsive"><table class="table table-sm table-hover align-middle table-responsive-cards">
+    <thead><tr>{% for c in rel.colunas %}<th class="{{ 'num' if loop.index0 in rel.num_cols }}">{{ c }}</th>{% endfor %}</tr></thead>
+    <tbody>{% for linha in rel.linhas %}<tr>{% for cel in linha %}<td class="{{ 'num' if loop.index0 in rel.num_cols }}" data-label="{{ rel.colunas[loop.index0] }}">{{ cel }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+    {% if rel.totais %}<tfoot><tr class="fw-bold">{% for cel in rel.totais %}<td class="{{ 'num' if loop.index0 in rel.num_cols }}">{{ cel }}</td>{% endfor %}</tr></tfoot>{% endif %}
+  </table></div>
+  {% else %}{{ m.empty('bi-file-earmark', 'Sem dados para os filtros escolhidos') }}{% endif %}
+</div>
+{% for n in rel.notas %}<p class="small text-muted mt-2 mb-0">{{ n }}</p>{% endfor %}
+<p class="small text-muted mt-2">Gerado em {{ gerado_em|data_br }} por {{ current_user.nome }}.</p>
+{% endblock %}

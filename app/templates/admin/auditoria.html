@@ -1,0 +1,14 @@
+{% extends "admin/_base.html" %}
+{% block title %}Auditoria · Administração{% endblock %}
+{% block admin %}
+<form class="filters" method="get"><div class="row g-2 align-items-end">
+  <div class="col-12 col-md-5"><label class="form-label" for="q">Buscar na descrição</label><input class="form-control" id="q" name="q" value="{{ args.get('q', '') }}"></div>
+  <div class="col-6 col-md-3"><label class="form-label" for="tipo">Registros</label><select class="form-select" id="tipo" name="tipo"><option value="">Somente administrativos</option><option value="todas" {% if args.get('tipo') == 'todas' %}selected{% endif %}>Todos (inclui atividades das contas)</option></select></div>
+  <div class="col-6 col-md-2"><button class="btn btn-primary w-100" type="submit">Filtrar</button></div>
+</div></form>
+<div class="card"><div class="table-responsive"><table class="table table-sm align-middle table-responsive-cards">
+  <thead><tr><th>Data e hora</th><th>Usuário</th><th>Ação</th><th>Descrição</th><th>IP</th></tr></thead>
+  <tbody>{% for a in pag.items %}<tr><td data-label="Data">{{ a.created_at|datahora_br }}</td><td data-label="Usuário">{{ a.user.nome if a.user else 'Sistema' }}</td><td data-label="Ação" class="small text-muted">{{ a.acao }}</td><td data-label="Descrição">{{ a.descricao }}</td><td data-label="IP" class="small text-muted">{{ a.ip or '' }}</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{{ m.pagination(pag, 'admin.auditoria') }}
+{% endblock %}

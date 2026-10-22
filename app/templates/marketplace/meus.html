@@ -1,0 +1,18 @@
+{% extends "layouts/app.html" %}
+{% block title %}Meus anúncios{% endblock %}
+{% block content %}
+{% call m.page_head('Meus anúncios', back=url_for('marketplace.index')) %}<a class="btn btn-gold" href="{{ url_for('marketplace.novo') }}"><i class="bi bi-plus-lg" aria-hidden="true"></i>Novo anúncio</a>{% endcall %}
+<div class="card">
+  {% if anuncios %}<div class="table-responsive"><table class="table table-hover align-middle table-responsive-cards">
+    <thead><tr><th>Anúncio</th><th>Categoria</th><th class="num">Preço</th><th>Situação</th><th class="num">Visualizações</th><th></th></tr></thead>
+    <tbody>{% for an in anuncios %}<tr>
+      <td data-label="Anúncio"><a class="fw-semibold" href="{{ url_for('marketplace.detalhe', aid=an.id) }}">{{ an.titulo }}</a><small class="d-block text-muted">{{ an.created_at|data_br }}</small></td>
+      <td data-label="Categoria">{{ an.categoria_label }}</td>
+      <td class="num" data-label="Preço">{{ an.preco|moeda if an.preco is not none and an.tipo_preco != 'orcamento' else 'Orçamento' }}</td>
+      <td data-label="Situação">{{ m.situacao_badge(an.status, status_opcoes.get(an.status)) }}</td>
+      <td class="num" data-label="Visualizações">{{ an.visualizacoes }}</td>
+      <td class="text-end" data-label="">{% if an.status != 'removido' %}<a class="btn btn-sm btn-outline-primary" href="{{ url_for('marketplace.editar', aid=an.id) }}">Editar</a>{% endif %}</td>
+    </tr>{% endfor %}</tbody></table></div>
+  {% else %}{{ m.empty('bi-megaphone', 'Você ainda não publicou anúncios', None, url_for('marketplace.novo'), 'Anunciar') }}{% endif %}
+</div>
+{% endblock %}

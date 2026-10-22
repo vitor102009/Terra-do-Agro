@@ -1,0 +1,29 @@
+{% extends "layouts/auth.html" %}
+{% block title %}Como você atua no agro{% endblock %}
+{% block auth %}
+<h1 class="mb-1">Como você atua no agro?</h1>
+<p class="text-muted mb-4">Escolha uma ou mais opções. Você pode ampliar seu perfil depois, sem criar outra conta.</p>
+{% if e and e.get('papeis') %}<div class="alert alert-danger" role="alert">{{ e.get('papeis') }}</div>{% endif %}
+{% set icones = {'produtor': 'bi-house-door', 'profissional': 'bi-person-badge', 'trabalhador': 'bi-person-workspace', 'empresa': 'bi-shop', 'comprador': 'bi-bag-check'} %}
+{% set desc = {'produtor': 'Gerencio propriedade, rebanho, lavoura e finanças.',
+  'profissional': 'Veterinário, agrônomo, zootecnista, técnico ou prestador de serviços.',
+  'trabalhador': 'Procuro oportunidades de trabalho no campo.',
+  'empresa': 'Loja, casa agropecuária, fornecedor ou fabricante.',
+  'comprador': 'Quero comprar animais, insumos, máquinas ou contratar serviços.'} %}
+<form method="post">
+  {{ m.csrf() }}
+  <fieldset>
+    <legend class="visually-hidden">Tipos de perfil</legend>
+    <div class="d-grid gap-2">
+    {% for chave, rotulo in papeis.items() %}
+      <label class="card p-3 d-flex flex-row align-items-center gap-3" for="p-{{ chave }}" style="cursor: pointer">
+        <input class="form-check-input mt-0" type="checkbox" name="papeis" value="{{ chave }}" id="p-{{ chave }}" {% if chave in atuais %}checked{% endif %}>
+        <i class="bi {{ icones[chave] }} fs-4 text-gold" aria-hidden="true"></i>
+        <span><span class="fw-semibold d-block">{{ rotulo }}</span><small class="text-muted">{{ desc[chave] }}</small></span>
+      </label>
+    {% endfor %}
+    </div>
+  </fieldset>
+  <button class="btn btn-primary w-100 btn-lg mt-4" type="submit">Continuar</button>
+</form>
+{% endblock %}

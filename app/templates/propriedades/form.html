@@ -1,0 +1,39 @@
+{% extends "layouts/app.html" %}
+{% block title %}{{ 'Editar propriedade' if prop else 'Nova propriedade' }}{% endblock %}
+{% block content %}
+{{ m.page_head('Editar propriedade' if prop else 'Nova propriedade', 'Os dados de localização detalhada são privados e visíveis apenas a quem tem acesso à propriedade.', back=url_for('propriedades.detalhe', pid=prop.id) if prop else url_for('propriedades.index')) }}
+<div class="card"><div class="card-body">
+  {{ m.form_errors() }}
+  <form method="post" novalidate>
+    {{ m.csrf() }}
+    <div class="form-section">Identificação</div>
+    <div class="row g-3">
+      {{ m.input('nome', 'Nome da propriedade', required=True, col='col-md-6') }}
+      {{ m.input('municipio', 'Município', required=True, col='col-md-4') }}
+      {{ m.uf(col='col-md-2') }}
+      {{ m.select('atividade', 'Atividade principal', atividades, required=True, col='col-md-6', empty=None) }}
+      {{ m.input('tipo_producao', 'Tipo de produção', col='col-md-6', placeholder='Ex.: cria e recria a pasto, leite tipo A, soja e milho safrinha') }}
+    </div>
+    <div class="form-section">Áreas e rebanho</div>
+    <div class="row g-3">
+      {{ m.number('area_total_ha', 'Área total (ha)', col='col-md-3') }}
+      {{ m.number('area_pastagem_ha', 'Área de pastagem (ha)', col='col-md-3') }}
+      {{ m.number('area_agricultura_ha', 'Área de agricultura (ha)', col='col-md-3') }}
+      {{ m.input('qtd_animais_aprox', 'Animais (aproximado)', type='number', col='col-md-3', attrs='min="0"', help='Referência inicial. O total real vem do cadastro do rebanho.') }}
+    </div>
+    <div class="form-section">Localização privada</div>
+    <div class="row g-3">
+      {{ m.input('endereco', 'Endereço ou roteiro de acesso', col='col-md-6') }}
+      {{ m.number('latitude', 'Latitude', col='col-md-3', placeholder='-15,7801') }}
+      {{ m.number('longitude', 'Longitude', col='col-md-3', placeholder='-47,9292') }}
+      <div class="col-12"><p class="small text-muted mb-0">Latitude e longitude são opcionais e melhoram a previsão do tempo. Sem elas, o clima usa a localização do município.</p></div>
+    </div>
+    <div class="form-section">Informações complementares</div>
+    <div class="row g-3">{{ m.textarea('informacoes', 'Observações', rows=3) }}</div>
+    <div class="form-actions">
+      <a class="btn btn-outline-secondary" href="{{ url_for('propriedades.index') }}">Cancelar</a>
+      <button class="btn btn-primary" type="submit"><i class="bi bi-check2" aria-hidden="true"></i>Salvar</button>
+    </div>
+  </form>
+</div></div>
+{% endblock %}

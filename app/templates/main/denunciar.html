@@ -1,0 +1,15 @@
+{% extends "layouts/app.html" %}
+{% block title %}Denunciar{% endblock %}
+{% block content %}
+{{ m.page_head('Denunciar ' ~ (tipo_label or 'conteúdo')|lower, 'A denúncia é analisada pela equipe de moderação. Seu nome não é mostrado ao autor do conteúdo.') }}
+<div class="card" style="max-width: 680px"><div class="card-body">
+  {{ m.form_errors() }}
+  <form method="post" novalidate>{{ m.csrf() }}
+    <div class="row g-3">
+      {{ m.select('motivo', 'Motivo', motivos, required=True) }}
+      {{ m.textarea('descricao', 'Descreva o problema', rows=4, help='Inclua informações que ajudem a moderação a avaliar o caso.') }}
+    </div>
+    <div class="form-actions"><button class="btn btn-outline-secondary" type="button" data-action="back">Cancelar</button><button class="btn btn-danger" type="submit">Enviar denúncia</button></div>
+  </form>
+</div></div>
+{% endblock %}

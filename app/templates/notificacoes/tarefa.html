@@ -1,0 +1,20 @@
+{% extends "layouts/app.html" %}
+{% block title %}{{ 'Editar item da agenda' if t else 'Novo item na agenda' }}{% endblock %}
+{% block content %}
+{{ m.page_head('Editar item da agenda' if t else 'Novo item na agenda', back=url_for('notificacoes.agenda')) }}
+<div class="card" style="max-width: 760px"><div class="card-body">
+  {{ m.form_errors() }}
+  <form method="post" novalidate>{{ m.csrf() }}
+    <div class="row g-3">
+      {{ m.select('tipo', 'Tipo', tipos, required=True, col='col-md-4', empty=None) }}
+      {{ m.input('titulo', 'Título', required=True, col='col-md-8') }}
+      {{ m.input('data', 'Data', type='date', required=True, col='col-md-4') }}
+      {{ m.input('hora', 'Horário', type='time', col='col-md-4') }}
+      {{ m.select('responsavel_id', 'Responsável', resp, col='col-md-4', empty='Sem responsável') }}
+      {{ m.textarea('descricao', 'Descrição', rows=3) }}
+      {% if not t and propriedade_atual %}{{ m.checkbox('vincular_propriedade', 'Vincular à propriedade ' ~ propriedade_atual.nome ~ ' (visível para quem tem acesso a ela)') }}{% endif %}
+    </div>
+    <div class="form-actions"><a class="btn btn-outline-secondary" href="{{ url_for('notificacoes.agenda') }}">Cancelar</a><button class="btn btn-primary" type="submit">Salvar</button></div>
+  </form>
+</div></div>
+{% endblock %}

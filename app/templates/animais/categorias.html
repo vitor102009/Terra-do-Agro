@@ -1,0 +1,40 @@
+{% extends "layouts/app.html" %}
+{% block title %}Categorias de animais{% endblock %}
+{% block content %}
+{{ m.page_head('Categorias de animais', 'A lista padrão vale para todas as propriedades. Você pode adicionar categorias próprias.', back=url_for('animais.index')) }}
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card mb-3"><div class="card-header"><h2>Categorias desta propriedade</h2></div>
+      {% if extras %}
+      <ul class="list-group list-group-flush">
+        {% for c in extras %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          <span>{{ c.nome }} <small class="text-muted">· {{ especies.get(c.especie) }}</small></span>
+          {% if pode('editar') %}<form method="post" data-confirm="Remover a categoria {{ c.nome }}?">{{ m.csrf() }}<button class="btn btn-sm btn-outline-danger" name="remover" value="{{ c.id }}" type="submit">Remover</button></form>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}<div class="card-body text-muted small">Nenhuma categoria personalizada.</div>{% endif %}
+    </div>
+    <div class="card"><div class="card-header"><h2>Lista padrão</h2></div><div class="card-body">
+      {% for esp, lista in padrao.items() %}
+      <div class="mb-2"><span class="fw-semibold">{{ especies.get(esp) }}:</span> <span class="text-muted">{{ lista|join(', ') }}</span></div>
+      {% endfor %}
+    </div></div>
+  </div>
+  {% if pode('editar') %}
+  <div class="col-lg-5">
+    <div class="card"><div class="card-header"><h2>Nova categoria</h2></div><div class="card-body">
+      {{ m.form_errors() }}
+      <form method="post" novalidate>{{ m.csrf() }}
+        <div class="row g-3">
+          {{ m.select('especie', 'Espécie', especies, required=True, empty=None) }}
+          {{ m.input('nome', 'Nome da categoria', required=True) }}
+          <div class="col-12"><button class="btn btn-primary w-100" type="submit">Adicionar</button></div>
+        </div>
+      </form>
+    </div></div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

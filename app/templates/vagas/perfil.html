@@ -1,0 +1,32 @@
+{% extends "layouts/app.html" %}
+{% block title %}Meu perfil de trabalhador{% endblock %}
+{% block content %}
+{{ m.page_head('Meu perfil de trabalhador rural', 'Usado nas candidaturas e na busca de trabalhadores. Documentos e endereço não são solicitados nem exibidos.') }}
+{% include "vagas/_nav.html" %}
+<div class="card" style="max-width: 1000px"><div class="card-body">
+  {{ m.form_errors() }}
+  <form method="post" novalidate>{{ m.csrf() }}
+    <div class="row g-3">
+      {{ m.input('titulo', 'Como você se apresenta', required=True, col='col-md-8', placeholder='Ex.: Vaqueiro com 10 anos de experiência em gado de corte') }}
+      {{ m.input('disponibilidade', 'Disponibilidade', col='col-md-4', placeholder='Ex.: imediata, a partir de março') }}
+      {{ m.checkgroup('categorias', 'Tipos de trabalho que realiza', categorias) }}
+      {{ m.textarea('habilidades', 'Habilidades', rows=3, col='col-md-6', placeholder='Ex.: doma, vacinação, operação de trator, ordenha mecânica') }}
+      {{ m.textarea('experiencias', 'Experiências / histórico profissional', rows=3, col='col-md-6') }}
+      {{ m.textarea('descricao', 'Sobre você', rows=2) }}
+      {{ m.input('municipio', 'Município onde está', required=True, col='col-md-5') }}
+      {{ m.uf(col='col-md-2') }}
+      {{ m.input('regiao_interesse', 'Região onde procura trabalho', col='col-md-5') }}
+    </div>
+    <div class="form-section">Contato e privacidade</div>
+    <div class="row g-3">
+      {{ m.input('telefone_contato', 'Telefone / WhatsApp', col='col-md-5', help='Nunca é exibido publicamente.') }}
+      <div class="col-md-7">
+        {{ m.checkbox('compartilhar_contato', 'Autorizo mostrar meu telefone a quem publicou as vagas em que eu me candidatar', col='') }}
+        {{ m.checkbox('visivel_busca', 'Aparecer na busca de trabalhadores (sem telefone; o contato é feito por mensagem)', col='') }}
+        {{ m.checkbox('disponivel', 'Estou disponível para trabalhar', col='') }}
+      </div>
+    </div>
+    <div class="form-actions"><button class="btn btn-primary" type="submit">Salvar perfil</button></div>
+  </form>
+</div></div>
+{% endblock %}

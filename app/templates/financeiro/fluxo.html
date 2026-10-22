@@ -1,0 +1,45 @@
+{% extends "layouts/app.html" %}
+{% block title %}Fluxo de caixa{% endblock %}
+{% block content %}
+{% call m.page_head('Fluxo de caixa', 'Entradas e saídas efetivas (data do pagamento ou recebimento).') %}
+  <form method="get" class="d-flex gap-2 align-items-center"><label class="small text-muted" for="meses">Período</label>
+    <select class="form-select form-select-sm" id="meses" name="meses" data-autosubmit>{% for n in [6, 12, 24, 36] %}<option value="{{ n }}" {% if n == meses %}selected{% endif %}>{{ n }} meses</option>{% endfor %}</select></form>
+  <button class="btn btn-outline-primary" type="button" data-action="print"><i class="bi bi-printer" aria-hidden="true"></i>Imprimir</button>
+{% endcall %}
+{% include "financeiro/_nav.html" %}
+<div class="row g-3 mb-3">
+  <div class="col-6 col-xl-3"><div class="card kpi"><div class="label"><i class="bi bi-wallet2" aria-hidden="true"></i>Saldo inicial</div><div class="value">{{ saldo_inicial|moeda }}</div><div class="hint">acumulado antes do período</div></div></div>
+  <div class="col-6 col-xl-3"><div class="card kpi kpi-dark"><div class="label"><i class="bi bi-wallet" aria-hidden="true"></i>Saldo atual calculado</div><div class="value">{{ tabela[-1].saldo|moeda }}</div><div class="hint">pelos lançamentos registrados</div></div></div>
+  <div class="col-6 col-xl-3"><div class="card kpi kpi-danger"><div class="label"><i class="bi bi-hourglass" aria-hidden="true"></i>A pagar (previsto)</div><div class="value">{{ total_pagar|moeda }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="card kpi"><div class="label"><i class="bi bi-hourglass-bottom" aria-hidden="true"></i>A receber (previsto)</div><div class="value value-pos">{{ total_receber|moeda }}</div></div></div>
+</div>
+<div class="card mb-3"><div class="card-body">
+  {% if tem_dados %}<div class="chart-box"><canvas role="img" aria-label="Fluxo de caixa mensal" data-chart='{{ grafico|tojson }}'></canvas></div>
+  {% else %}{{ m.empty('bi-bar-chart', 'Sem pagamentos ou recebimentos no período', 'O fluxo de caixa considera somente valores efetivamente pagos ou recebidos.') }}{% endif %}
+</div></div>
+<div class="row g-3">
+  <div class="col-xl-7">
+    <div class="card"><div class="table-responsive"><table class="table align-middle table-responsive-cards">
+      <thead><tr><th>Mês</th><th class="num">Entradas</th><th class="num">Saídas</th><th class="num">Líquido</th><th class="num">Saldo acumulado</th></tr></thead>
+      <tbody>{% for t in tabela %}
+        <tr><td data-label="Mês">{{ t.mes }}</td><td class="num value-pos" data-label="Entradas">{{ t.entradas|moeda }}</td><td class="num value-neg" data-label="Saídas">{{ t.saidas|moeda }}</td>
+          <td class="num {{ 'value-neg' if t.liquido < 0 }}" data-label="Líquido">{{ t.liquido|moeda }}</td><td class="num fw-semibold {{ 'value-neg' if t.saldo < 0 }}" data-label="Saldo">{{ t.saldo|moeda }}</td></tr>
+      {% endfor %}</tbody>
+    </table></div></div>
+  </div>
+  <div class="col-xl-5">
+    {% for titulo, lista, url in [('Próximas contas a pagar', a_pagar, url_for('financeiro.contas', tipo='pagar')), ('Próximas contas a receber', a_receber, url_for('financeiro.contas', tipo='receber'))] %}
+    <div class="card mb-3"><div class="card-header"><h2>{{ titulo }}</h2><a class="small" href="{{ url }}">Ver todas</a></div>
+      {% if lista %}<ul class="list-group list-group-flush">{% for l in lista %}
+        <li class="list-group-item d-flex justify-content-between"><a href="{{ url_for('financeiro.detalhe', lid=l.id) }}">{{ l.descricao }}<small class="d-block text-muted">{{ ('vence ' ~ (l.vencimento|data_br)) if l.vencimento else 'sem vencimento' }}</small></a><strong>{{ l.saldo|moeda }}</strong></li>
+      {% endfor %}</ul>{% else %}<div class="card-body small text-muted">Nada em aberto.</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+<p class="small text-muted mt-3">Resultado do período (receitas − despesas por competência) é diferente do fluxo de caixa (dinheiro que efetivamente entrou ou saiu) e dos custos de produção (rateio por lote, animal ou atividade).</p>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+{% endblock %}

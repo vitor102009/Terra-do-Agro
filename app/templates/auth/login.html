@@ -1,0 +1,20 @@
+{% extends "layouts/auth.html" %}
+{% block title %}Entrar{% endblock %}
+{% block auth %}
+<h1 class="mb-1">Entrar</h1>
+<p class="text-muted mb-4">Acesse sua conta do Terra do Agro.</p>
+{% if e and e.get('_geral') %}<div class="alert alert-danger" role="alert">{{ e.get('_geral') }}</div>{% endif %}
+<form method="post" novalidate data-loading>
+  {{ m.csrf() }}
+  <div class="row g-3">
+    {{ m.input('email', 'E-mail', type='email', required=True, attrs='autocomplete="email" autofocus') }}
+    <div class="col-12">
+      <div class="d-flex justify-content-between"><label class="form-label required" for="f-senha">Senha</label><a class="small" href="{{ url_for('auth.recuperar') }}">Esqueci minha senha</a></div>
+      <input class="form-control" type="password" id="f-senha" name="senha" required autocomplete="current-password">
+    </div>
+    {{ m.checkbox('lembrar', 'Manter conectado neste aparelho') }}
+    <div class="col-12"><button class="btn btn-primary w-100 btn-lg" type="submit">Entrar</button></div>
+  </div>
+</form>
+<p class="text-center mt-4 mb-0">Ainda não tem conta? <a class="fw-semibold" href="{{ url_for('auth.cadastro') }}">Cadastre-se gratuitamente</a></p>
+{% endblock %}

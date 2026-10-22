@@ -1,0 +1,17 @@
+{% extends "admin/_base.html" %}
+{% block title %}Verificações · Administração{% endblock %}
+{% block admin %}
+<div class="d-flex gap-2 mb-3">{% for k, r in [('pendente', 'Pendentes'), ('aprovada', 'Aprovadas'), ('recusada', 'Recusadas')] %}<a class="cat-chip {% if status == k %}active{% endif %}" href="{{ url_for('admin.verificacoes', status=k) }}">{{ r }}</a>{% endfor %}</div>
+<div class="card">
+  {% if itens %}<div class="table-responsive"><table class="table table-hover align-middle table-responsive-cards">
+    <thead><tr><th>Profissional</th><th>Categoria</th><th>Registro</th><th>Enviada</th><th></th></tr></thead>
+    <tbody>{% for s in itens %}<tr>
+      <td data-label="Profissional">{{ s.perfil.user.nome }}<small class="d-block text-muted">{{ s.perfil.user.email }}</small></td>
+      <td data-label="Categoria">{{ s.perfil.categoria.nome }}</td>
+      <td data-label="Registro">{{ s.perfil.categoria.registro_label or '' }} {{ s.perfil.registro_numero or '—' }}{% if s.perfil.registro_uf %}/{{ s.perfil.registro_uf }}{% endif %}</td>
+      <td data-label="Enviada">{{ s.created_at|datahora_br }}</td>
+      <td class="text-end" data-label=""><a class="btn btn-sm btn-primary" href="{{ url_for('admin.verificacao', vid=s.id) }}">{{ 'Analisar' if s.status == 'pendente' else 'Ver' }}</a></td>
+    </tr>{% endfor %}</tbody></table></div>
+  {% else %}{{ m.empty('bi-patch-check', 'Nenhuma solicitação') }}{% endif %}
+</div>
+{% endblock %}

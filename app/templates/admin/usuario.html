@@ -1,0 +1,44 @@
+{% extends "admin/_base.html" %}
+{% block title %}{{ u.nome }} · Administração{% endblock %}
+{% block admin %}
+{{ m.page_head(u.nome, u.email, back=url_for('admin.usuarios')) }}
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card mb-3"><div class="card-body">
+      <dl class="dl-grid">
+        <div><dt>Situação</dt><dd>{{ 'Ativo' if u.ativo else 'Suspenso' }}{% if u.suspenso_motivo %}<small class="d-block text-muted">{{ u.suspenso_motivo }}</small>{% endif %}</dd></div>
+        <div><dt>Perfis</dt><dd>{{ u.lista_papeis|rotulos(papeis)|join(', ') or '—' }}</dd></div>
+        <div><dt>Administrador</dt><dd>{{ 'Sim' if u.is_admin else 'Não' }}</dd></div>
+        <div><dt>E-mail confirmado</dt><dd>{{ 'Sim' if u.email_verificado else 'Não' }}</dd></div>
+        <div><dt>Cadastro</dt><dd>{{ u.created_at|datahora_br }}</dd></div>
+        <div><dt>Último acesso</dt><dd>{{ u.ultimo_login|datahora_br if u.ultimo_login else '—' }}</dd></div>
+        <div><dt>Município</dt><dd>{{ (u.municipio ~ '/' ~ u.uf) if u.municipio else '—' }}</dd></div>
+        <div><dt>Conteúdo</dt><dd>{{ anuncios }} anúncio(s), {{ posts }} publicação(ões)</dd></div>
+      </dl>
+    </div></div>
+    <div class="card mb-3"><div class="card-header"><h2>Propriedades vinculadas</h2></div>
+      {% if vinculos %}<ul class="list-group list-group-flush">{% for v_ in vinculos %}<li class="list-group-item small d-flex justify-content-between"><span>{{ v_.propriedade.nome }} · {{ v_.propriedade.municipio }}/{{ v_.propriedade.uf }}</span><span class="text-muted">{{ v_.papel_label }}</span></li>{% endfor %}</ul>
+      {% else %}<div class="card-body small text-muted">Nenhuma.</div>{% endif %}
+    </div>
+    <div class="card mb-3"><div class="card-header"><h2>Perfis profissionais</h2></div>
+      {% if perfis %}<ul class="list-group list-group-flush">{% for p in perfis %}<li class="list-group-item small d-flex justify-content-between"><a href="{{ url_for('profissionais.perfil', perfil_id=p.id) }}">{{ p.categoria.nome }} · {{ p.titulo }}</a><span>{{ 'verificado' if p.verificado else 'não verificado' }}</span></li>{% endfor %}</ul>
+      {% else %}<div class="card-body small text-muted">Nenhum.</div>{% endif %}
+    </div>
+    {% if denuncias %}<div class="card"><div class="card-header"><h2>Denúncias contra este usuário</h2></div><ul class="list-group list-group-flush">{% for d in denuncias %}<li class="list-group-item small"><a href="{{ url_for('admin.denuncia', did=d.id) }}">{{ d.created_at|data_br }} · {{ d.motivo }}</a> · {{ d.status }}</li>{% endfor %}</ul></div>{% endif %}
+  </div>
+  <div class="col-lg-5">
+    <div class="card"><div class="card-header"><h2>Ações</h2></div><div class="card-body d-grid gap-2">
+      {% if u.ativo %}
+      <form method="post" data-confirm="Suspender a conta de {{ u.nome }}? As sessões abertas serão encerradas.">{{ m.csrf() }}<input type="hidden" name="acao" value="suspender">
+        <label class="form-label small" for="motivo">Motivo da suspensão</label><input class="form-control mb-2" id="motivo" name="motivo" required>
+        <button class="btn btn-outline-danger w-100" type="submit">Suspender conta</button></form>
+      {% else %}
+      <form method="post">{{ m.csrf() }}<input type="hidden" name="acao" value="reativar"><button class="btn btn-primary w-100" type="submit">Reativar conta</button></form>
+      {% endif %}
+      {% if not u.email_verificado %}<form method="post">{{ m.csrf() }}<input type="hidden" name="acao" value="confirmar_email"><button class="btn btn-outline-primary w-100" type="submit">Marcar e-mail como confirmado</button></form>{% endif %}
+      <form method="post" data-confirm="{{ 'Remover' if u.is_admin else 'Conceder' }} acesso administrativo a {{ u.nome }}?">{{ m.csrf() }}<input type="hidden" name="acao" value="{{ 'remover_admin' if u.is_admin else 'tornar_admin' }}"><button class="btn btn-outline-secondary w-100" type="submit">{{ 'Remover acesso administrativo' if u.is_admin else 'Conceder acesso administrativo' }}</button></form>
+      <a class="btn btn-outline-primary" href="{{ url_for('admin.auditoria', tipo='todas', q=u.email) }}">Ver registros relacionados</a>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

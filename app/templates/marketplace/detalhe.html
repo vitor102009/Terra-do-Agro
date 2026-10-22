@@ -1,0 +1,71 @@
+{% extends "layouts/app.html" %}
+{% block title %}{{ an.titulo }}{% endblock %}
+{% block content %}
+<a class="small d-inline-flex align-items-center mb-2" href="{{ url_for('marketplace.index', categoria=an.categoria) }}"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>{{ an.categoria_label }}</a>
+{% if an.status != 'ativo' %}<div class="alert alert-warning">Situação do anúncio: {{ status.get(an.status) }}. Ele não aparece nas buscas.</div>{% endif %}
+{% if an.is_demo %}<div class="notice mb-3">Anúncio de demonstração: criado apenas para apresentar a plataforma. Não corresponde a um produto disponível.</div>{% endif %}
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div data-gallery>
+      <div class="gallery-main">
+        {% if an.fotos %}<img data-gallery-main src="{{ url_for('main.media', caminho=an.fotos[0].arquivo) }}" alt="Foto do anúncio {{ an.titulo }}">
+        {% else %}<i class="bi bi-image fs-1 text-muted" aria-hidden="true"></i><span class="visually-hidden">Anúncio sem fotografias</span>{% endif %}
+      </div>
+      {% if an.fotos|length > 1 %}
+      <div class="gallery-thumbs">{% for f in an.fotos %}<button type="button" class="{% if loop.first %}active{% endif %}" data-gallery-thumb="{{ url_for('main.media', caminho=f.arquivo) }}" aria-label="Ver foto {{ loop.index }}"><img src="{{ url_for('main.media', caminho=f.arquivo) }}" alt=""></button>{% endfor %}</div>
+      {% endif %}
+    </div>
+    <div class="card mt-3"><div class="card-body">
+      <h2 class="h5">Descrição</h2>
+      <p class="text-pre">{{ an.descricao }}</p>
+      {% if an.categoria == 'animais' %}
+      <h3 class="h6 mt-3">Informações dos animais</h3>
+      <dl class="dl-grid">
+        <div><dt>Espécie</dt><dd>{{ especies.get(an.especie, '—') }}</dd></div>
+        <div><dt>Raça</dt><dd>{{ an.raca or '—' }}</dd></div>
+        <div><dt>Quantidade</dt><dd>{{ an.quantidade or '—' }}</dd></div>
+        <div><dt>Idade</dt><dd>{{ (an.idade_meses ~ ' meses') if an.idade_meses is not none else '—' }}</dd></div>
+        <div><dt>Sexo</dt><dd>{{ sexos.get(an.sexo, '—') }}</dd></div>
+        <div><dt>Peso médio</dt><dd>{{ (an.peso_medio_kg|numero(0) ~ ' kg') if an.peso_medio_kg else '—' }}</dd></div>
+      </dl>
+      {% if an.documentacao %}<h3 class="h6 mt-3">Documentação informada pelo anunciante</h3><p class="small text-pre">{{ an.documentacao }}</p>{% endif %}
+      <p class="small text-muted mb-0">O trânsito de animais exige Guia de Trânsito Animal (GTA) e atestados sanitários conforme as normas do órgão de defesa agropecuária do estado.</p>
+      {% endif %}
+      {% if an.condicoes %}<h3 class="h6 mt-3">Condições de negociação</h3><p class="small text-pre">{{ an.condicoes }}</p>{% endif %}
+      {% if an.entrega %}<h3 class="h6 mt-3">Entrega / atendimento</h3><p class="small text-pre mb-0">{{ an.entrega }}</p>{% endif %}
+    </div></div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card mb-3"><div class="card-body">
+      <div class="small text-muted">{{ an.categoria_label }} · publicado em {{ an.created_at|data_br }}</div>
+      <h1 class="h4 mt-1">{{ an.titulo }}</h1>
+      <div class="fs-3 fw-bold" style="color: var(--ta-green-dark)">{% if an.tipo_preco == 'orcamento' or an.preco is none %}Sob orçamento{% else %}{{ an.preco|moeda }}{% if an.unidade_preco %} <small class="fs-6 text-muted fw-normal">/ {{ an.unidade_preco }}</small>{% endif %}{% endif %}</div>
+      <div class="small text-muted mb-3">{{ tipos_preco.get(an.tipo_preco) }} · <i class="bi bi-geo-alt" aria-hidden="true"></i> {{ an.municipio }}/{{ an.uf }}</div>
+      {% if dono %}
+        <div class="d-grid gap-2">
+          <a class="btn btn-primary" href="{{ url_for('marketplace.editar', aid=an.id) }}"><i class="bi bi-pencil" aria-hidden="true"></i>Editar anúncio</a>
+          {% if an.status != 'removido' %}
+          <form method="post" action="{{ url_for('marketplace.status', aid=an.id) }}" class="d-flex gap-2">{{ m.csrf() }}
+            {% if an.status == 'ativo' %}<button class="btn btn-outline-secondary flex-fill" name="status" value="pausado" type="submit">Pausar</button>{% else %}<button class="btn btn-outline-primary flex-fill" name="status" value="ativo" type="submit">Reativar</button>{% endif %}
+            {% if an.status != 'vendido' %}<button class="btn btn-outline-primary flex-fill" name="status" value="vendido" type="submit">Marcar como vendido</button>{% endif %}
+          </form>{% endif %}
+          <span class="small text-muted text-center">{{ an.visualizacoes }} visualização(ões)</span>
+        </div>
+      {% else %}
+        <div class="d-grid gap-2">
+          <a class="btn btn-gold btn-lg" href="{{ url_for('chat.iniciar', user_id=an.user_id, anuncio=an.id) }}"><i class="bi bi-chat-dots" aria-hidden="true"></i>Falar com o anunciante</a>
+          <form method="post" action="{{ url_for('marketplace.favoritar', aid=an.id) }}">{{ m.csrf() }}<button class="btn btn-outline-primary w-100" type="submit"><i class="bi {{ 'bi-heart-fill' if favorito else 'bi-heart' }}" aria-hidden="true"></i>{{ 'Remover dos favoritos' if favorito else 'Salvar nos favoritos' }}</button></form>
+        </div>
+      {% endif %}
+    </div></div>
+    <div class="card mb-3"><div class="card-body">
+      <div class="small-caps text-muted mb-2">Anunciante</div>
+      <div class="d-flex align-items-center gap-3">{{ m.avatar(an.autor) }}<div><div class="fw-semibold">{{ empresa.nome_fantasia if empresa else an.autor.nome }}</div><div class="small text-muted">{% if an.autor.municipio %}{{ an.autor.municipio }}/{{ an.autor.uf }} · {% endif %}na plataforma desde {{ an.autor.created_at.strftime('%m/%Y') }}</div></div></div>
+      {% if empresa %}<a class="small d-inline-block mt-2" href="{{ url_for('profissionais.empresa', eid=empresa.id) }}">Ver perfil da empresa</a>{% endif %}
+      {% if outros %}<hr><div class="small fw-semibold mb-1">Outros anúncios</div>{% for o in outros %}<a class="d-block small" href="{{ url_for('marketplace.detalhe', aid=o.id) }}">{{ o.titulo }}</a>{% endfor %}{% endif %}
+    </div></div>
+    {% if not dono %}<div class="text-center">{{ m.denunciar('anuncio', an.id) }}</div>{% endif %}
+    <p class="small text-muted mt-2">Pagamentos e entregas não são processados pela plataforma. Desconfie de pedidos de pagamento antecipado fora do combinado.</p>
+  </div>
+</div>
+{% endblock %}

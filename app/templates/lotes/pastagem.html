@@ -1,0 +1,48 @@
+{% extends "layouts/app.html" %}
+{% block title %}Pastagem {{ past.nome }}{% endblock %}
+{% block content %}
+{% call m.page_head('Pastagem ' ~ past.nome, (past.forrageira or 'Forrageira não informada') ~ ' · ' ~ condicoes.get(past.condicao, 'Condição não avaliada'), back=url_for('lotes.index', aba='pastagens')) %}
+  {% if pode('editar') %}<a class="btn btn-outline-primary" href="{{ url_for('lotes.editar_pastagem', pid_=past.id) }}"><i class="bi bi-pencil" aria-hidden="true"></i>Editar</a>{% endif %}
+{% endcall %}
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-3"><div class="card kpi"><div class="label"><i class="bi bi-bounding-box" aria-hidden="true"></i>Área</div><div class="value">{{ (past.area_ha|numero(2) ~ ' ha') if past.area_ha is not none else '—' }}</div></div></div>
+  <div class="col-6 col-md-3"><div class="card kpi"><div class="label"><i class="bi bi-tags" aria-hidden="true"></i>Animais nos lotes</div><div class="value">{{ qtd_animais }}</div></div></div>
+  <div class="col-12 col-md-6"><div class="card kpi"><div class="label"><i class="bi bi-grid-3x3" aria-hidden="true"></i>Lotação atual</div><div class="value">{% if lot.ok %}{{ lot.ua_ha|numero(2) }} UA/ha{% else %}—{% endif %}</div><div class="hint">{% if lot.ok %}{{ lot.ua|numero(1) }} UA · peso vivo {{ lot.peso_total|numero(0) }} kg{% else %}{{ lot.motivo }}{% endif %}</div></div></div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card mb-3"><div class="card-header"><h2>Histórico de manejo</h2></div>
+      {% if past.manejos %}
+      <ul class="list-group list-group-flush">{% for mj in past.manejos %}
+        <li class="list-group-item">
+          <div class="d-flex justify-content-between"><span class="fw-semibold">{{ tipos.get(mj.tipo) }}</span><span class="small text-muted">{{ mj.data|data_br }}</span></div>
+          <div class="small text-muted">{% if mj.condicao %}Condição: {{ condicoes.get(mj.condicao) }}{% endif %}{% if mj.altura_cm %} · Altura: {{ mj.altura_cm|numero(0) }} cm{% endif %} · {{ mj.autor.nome if mj.autor else '' }}</div>
+          {% if mj.observacao %}<div class="small mt-1 text-pre">{{ mj.observacao }}</div>{% endif %}
+        </li>{% endfor %}</ul>
+      {% else %}<div class="card-body text-muted small">Nenhum manejo registrado.</div>{% endif %}
+    </div>
+    <div class="card"><div class="card-body small">
+      <p class="mb-1"><span class="fw-semibold">Lotes:</span> {% for l in past.lotes %}<a href="{{ url_for('lotes.detalhe', lid=l.id) }}">{{ l.nome }}</a>{% if not loop.last %}, {% endif %}{% else %}nenhum{% endfor %}</p>
+      {% if past.disponibilidade %}<p class="mb-1 text-pre"><span class="fw-semibold">Disponibilidade:</span> {{ past.disponibilidade }}</p>{% endif %}
+      {% if past.observacoes %}<p class="mb-0 text-pre"><span class="fw-semibold">Observações:</span> {{ past.observacoes }}</p>{% endif %}
+    </div></div>
+  </div>
+  {% if pode('editar') %}
+  <div class="col-lg-5">
+    <div class="card"><div class="card-header"><h2>Registrar manejo</h2></div><div class="card-body">
+      {{ m.form_errors() }}
+      <form method="post" novalidate>{{ m.csrf() }}
+        <div class="row g-3">
+          {{ m.input('data', 'Data', type='date', required=True, col='col-6') }}
+          {{ m.select('tipo', 'Tipo', tipos, required=True, col='col-6', empty=None) }}
+          {{ m.select('condicao', 'Condição observada', condicoes, col='col-6', empty='Não avaliada') }}
+          {{ m.number('altura_cm', 'Altura do pasto (cm)', col='col-6') }}
+          {{ m.textarea('observacao', 'Observação', rows=3) }}
+          <div class="col-12"><button class="btn btn-primary w-100" type="submit">Registrar</button></div>
+        </div>
+      </form>
+    </div></div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "layouts/app.html" %}
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-2"><span class="badge bg-green-dark"><i class="bi bi-shield-lock text-gold" aria-hidden="true"></i> Administração</span></div>
+<ul class="nav nav-tabs mb-3 flex-nowrap overflow-auto" style="white-space: nowrap">
+  {% for ep, rot in [('admin.index', 'Visão geral'), ('admin.usuarios', 'Usuários'), ('admin.verificacoes', 'Verificações'), ('admin.perfis', 'Perfis'),
+    ('admin.categorias', 'Categorias'), ('admin.denuncias', 'Denúncias'), ('admin.anuncios', 'Anúncios'), ('admin.conteudos', 'Conteúdos'),
+    ('admin.propriedades', 'Propriedades'), ('admin.suporte', 'Suporte'), ('admin.comunicados', 'Comunicados'), ('admin.cotacoes', 'Cotações'),
+    ('admin.configuracoes', 'Configurações'), ('admin.auditoria', 'Auditoria')] %}
+  <li class="nav-item"><a class="nav-link {% if request.endpoint == ep or (request.endpoint.startswith(ep) and ep != 'admin.index') %}active{% endif %}" href="{{ url_for(ep) }}">{{ rot }}</a></li>
+  {% endfor %}
+</ul>
+{% block admin %}{% endblock %}
+{% endblock %}

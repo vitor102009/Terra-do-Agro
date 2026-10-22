@@ -1,0 +1,19 @@
+{% extends "layouts/app.html" %}
+{% block title %}Participantes · {{ grupo.nome }}{% endblock %}
+{% block content %}
+{{ m.page_head('Participantes', grupo.nome, back=url_for('comunidade.grupo', gid=grupo.id)) }}
+<div class="card" style="max-width: 860px">
+  <ul class="list-group list-group-flush">{% for mb in lista %}
+    <li class="list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <div class="d-flex align-items-center gap-2">{{ m.avatar(mb.user, 'avatar-sm') }}<a href="{{ url_for('feed.usuario', uid=mb.user.id) }}">{{ mb.user.nome }}</a> <span class="badge badge-soft-gray">{{ papeis[mb.papel] }}</span></div>
+      {% if eh_admin and mb.user_id != current_user.id %}
+      <form method="post" class="d-flex gap-2">{{ m.csrf() }}<input type="hidden" name="membro_id" value="{{ mb.id }}">
+        <label class="visually-hidden" for="papel-{{ mb.id }}">Papel</label>
+        <select class="form-select form-select-sm w-auto" id="papel-{{ mb.id }}" name="acao">{% for k, r in papeis.items() %}<option value="{{ k }}" {% if k == mb.papel %}selected{% endif %}>{{ r }}</option>{% endfor %}<option value="remover">Remover do grupo</option></select>
+        <button class="btn btn-sm btn-primary" type="submit">Aplicar</button>
+      </form>
+      {% endif %}
+    </li>{% endfor %}
+  </ul>
+</div>
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends "admin/_base.html" %}
+{% block title %}Suporte · Administração{% endblock %}
+{% block admin %}
+<div class="d-flex gap-2 mb-3">{% for k, r in [('aberto', 'Abertos'), ('respondido', 'Respondidos'), ('encerrado', 'Encerrados')] %}<a class="cat-chip {% if status == k %}active{% endif %}" href="{{ url_for('admin.suporte', status=k) }}">{{ r }}</a>{% endfor %}</div>
+<div class="card">
+  {% if itens %}<div class="list-group list-group-flush">{% for ch in itens %}
+    <a class="list-group-item list-group-item-action d-flex justify-content-between" href="{{ url_for('admin.chamado', cid=ch.id) }}"><span>{{ ch.assunto }}<small class="d-block text-muted">{{ ch.user.nome }} · {{ tipos.get(ch.tipo) }} · {{ ch.created_at|datahora_br }}</small></span>{% if ch.tipo.startswith('lgpd') %}<span class="badge badge-soft-gold align-self-center">LGPD</span>{% endif %}</a>
+  {% endfor %}</div>{% else %}{{ m.empty('bi-life-preserver', 'Nenhum chamado') }}{% endif %}
+</div>
+{% endblock %}

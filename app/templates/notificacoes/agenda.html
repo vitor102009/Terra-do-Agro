@@ -1,0 +1,45 @@
+{% extends "layouts/app.html" %}
+{% block title %}Agenda{% endblock %}
+{% block content %}
+{% call m.page_head('Agenda e tarefas', 'Compromissos, atendimentos, pesagens programadas e tarefas da propriedade.') %}
+  <a class="btn btn-outline-primary" href="{{ url_for('saude.index', aba='agenda') }}"><i class="bi bi-shield-plus" aria-hidden="true"></i>Agenda sanitária</a>
+  <a class="btn btn-primary" href="{{ url_for('notificacoes.nova_tarefa') }}"><i class="bi bi-plus-lg" aria-hidden="true"></i>Novo item</a>
+{% endcall %}
+<div class="chips-scroll mb-3">
+  <a class="cat-chip {% if not args.get('tipo') %}active{% endif %}" href="{{ url_for('notificacoes.agenda') }}">Tudo</a>
+  {% for k, r in tipos.items() %}<a class="cat-chip {% if args.get('tipo') == k %}active{% endif %}" href="{{ url_for('notificacoes.agenda', tipo=k) }}">{{ r }}</a>{% endfor %}
+</div>
+<div class="row g-3">
+  <div class="col-lg-8">
+    {% set vazio = grupos.values()|map('length')|sum == 0 %}
+    {% if vazio %}<div class="card">{{ m.empty('bi-calendar-check', 'Nada pendente', 'Cadastre tarefas, compromissos e pesagens programadas.', url_for('notificacoes.nova_tarefa'), 'Novo item') }}</div>{% endif %}
+    {% for titulo, lista in grupos.items() if lista %}
+    <div class="card mb-3"><div class="card-header"><h2>{{ titulo }} <span class="badge {{ 'badge-soft-red' if titulo == 'Atrasadas' else 'badge-soft-gray' }}">{{ lista|length }}</span></h2></div>
+      <ul class="list-group list-group-flush">{% for t in lista %}
+        <li class="list-group-item d-flex flex-wrap gap-2 justify-content-between align-items-center">
+          <div class="min-w-0">
+            <div class="fw-semibold">{{ t.titulo }}</div>
+            <div class="small text-muted">{{ tipos[t.tipo] }} · {{ t.data|data_br }}{% if t.hora %} às {{ t.hora.strftime('%H:%M') }}{% endif %}{% if t.responsavel %} · {{ t.responsavel.nome }}{% endif %}{% if t.propriedade %} · {{ t.propriedade.nome }}{% endif %}</div>
+            {% if t.descricao %}<div class="small text-pre">{{ t.descricao }}</div>{% endif %}
+          </div>
+          {% if pode_editar(t) %}
+          <div class="d-flex gap-1">
+            <form method="post" action="{{ url_for('notificacoes.status_tarefa', tid=t.id) }}">{{ m.csrf() }}<button class="btn btn-sm btn-primary" name="status" value="concluida" type="submit"><i class="bi bi-check2" aria-hidden="true"></i>Concluir</button></form>
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('notificacoes.editar_tarefa', tid=t.id) }}" aria-label="Editar {{ t.titulo }}"><i class="bi bi-pencil" aria-hidden="true"></i></a>
+            <form method="post" action="{{ url_for('notificacoes.status_tarefa', tid=t.id) }}" data-confirm="Cancelar este item?">{{ m.csrf() }}<button class="btn btn-sm btn-outline-secondary" name="status" value="cancelada" type="submit" aria-label="Cancelar {{ t.titulo }}"><i class="bi bi-x" aria-hidden="true"></i></button></form>
+          </div>
+          {% endif %}
+        </li>{% endfor %}</ul>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="col-lg-4">
+    <div class="card"><div class="card-header"><h2>Concluídas recentemente</h2></div>
+      {% if concluidas %}<ul class="list-group list-group-flush">{% for t in concluidas %}
+        <li class="list-group-item d-flex justify-content-between align-items-center small"><span class="{{ 'text-decoration-line-through text-muted' if t.status == 'cancelada' }}">{{ t.titulo }}<span class="d-block text-muted">{{ t.data|data_br }}</span></span>
+          {% if pode_editar(t) %}<form method="post" action="{{ url_for('notificacoes.status_tarefa', tid=t.id) }}">{{ m.csrf() }}<button class="btn btn-sm btn-link" name="status" value="pendente" type="submit">Reabrir</button></form>{% endif %}</li>
+      {% endfor %}</ul>{% else %}<div class="card-body small text-muted">Nenhuma ainda.</div>{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

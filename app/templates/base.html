@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% block title %}Início{% endblock %} · Terra do Agro</title>
+  <meta name="description" content="Terra do Agro — A Revolução Digital do Agro Brasileiro. Gestão rural, marketplace, profissionais e comunidade.">
+  <meta name="theme-color" content="#073817">
+  <meta name="application-name" content="Terra do Agro">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Terra do Agro">
+  <link rel="manifest" href="{{ url_for('main.pwa_manifest') }}">
+  <link rel="icon" href="{{ url_for('static', filename='img/logo-mark.svg') }}" type="image/svg+xml">
+  <link rel="icon" href="{{ url_for('static', filename='icons/favicon-32.png') }}" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  {% if current_user.is_authenticated %}
+  <meta name="ta-user" content="{{ offline_key }}">
+  <meta name="ta-user-name" content="{{ current_user.primeiro_nome }}">
+  {% endif %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/terra.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <a class="visually-hidden-focusable" href="#conteudo">Ir para o conteúdo principal</a>
+  {% block body %}{% endblock %}
+  <script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/offline-store.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

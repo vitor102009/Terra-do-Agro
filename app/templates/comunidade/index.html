@@ -1,0 +1,32 @@
+{% extends "layouts/app.html" %}
+{% block title %}Grupos{% endblock %}
+{% block content %}
+{% call m.page_head('Grupos e comunidade', 'Conecte-se com produtores e profissionais por tema e região.') %}
+  <a class="btn btn-outline-primary" href="{{ url_for('feed.index') }}"><i class="bi bi-newspaper" aria-hidden="true"></i>Feed rural</a>
+  <a class="btn btn-primary" href="{{ url_for('comunidade.novo') }}"><i class="bi bi-plus-lg" aria-hidden="true"></i>Criar grupo</a>
+{% endcall %}
+<div class="chips-scroll mb-3">
+  <a class="cat-chip {% if not args.get('tema') %}active{% endif %}" href="{{ url_for('comunidade.index') }}">Todos</a>
+  {% for k, r in temas.items() %}<a class="cat-chip {% if args.get('tema') == k %}active{% endif %}" href="{{ url_for('comunidade.index', tema=k) }}">{{ r }}</a>{% endfor %}
+</div>
+<form class="filters" method="get">{% if args.get('tema') %}<input type="hidden" name="tema" value="{{ args.get('tema') }}">{% endif %}
+  <div class="row g-2 align-items-end">
+    <div class="col-8 col-md-6"><label class="form-label" for="q">Buscar grupo</label><input class="form-control" id="q" name="q" value="{{ args.get('q', '') }}"></div>
+    <div class="col-4 col-md-2"><label class="form-label" for="uf">UF</label><select class="form-select" id="uf" name="uf"><option value="">—</option>{% for u in ufs %}<option {% if args.get('uf') == u %}selected{% endif %}>{{ u }}</option>{% endfor %}</select></div>
+    <div class="col-12 col-md-2"><button class="btn btn-primary w-100" type="submit">Buscar</button></div>
+  </div>
+</form>
+<div class="row g-3">
+  {% for gr in grupos %}
+  <div class="col-md-6 col-xl-4"><div class="card listing-card">
+    <div class="thumb" style="aspect-ratio: 16/6">{% if gr.capa %}<img src="{{ url_for('main.media', caminho=gr.capa) }}" alt="" loading="lazy">{% else %}<i class="bi bi-people" aria-hidden="true"></i>{% endif %}</div>
+    <div class="card-body">
+      <div class="small text-muted">{{ gr.tema_label }}{% if gr.uf %} · {{ gr.municipio ~ '/' if gr.municipio }}{{ gr.uf }}{% endif %}</div>
+      <h2 class="h6 mb-1"><a class="text-reset stretched-link" href="{{ url_for('comunidade.grupo', gid=gr.id) }}">{{ gr.nome }}</a></h2>
+      <p class="small text-muted mb-2">{{ gr.descricao|truncate(110) }}</p>
+      <div class="d-flex justify-content-between small"><span>{{ contagem.get(gr.id, 0) }} participante(s)</span>{% if gr.id in meus %}<span class="badge badge-soft-green">Participando</span>{% endif %}</div>
+    </div>
+  </div></div>
+  {% else %}<div class="col-12"><div class="card">{{ m.empty('bi-people', 'Nenhum grupo encontrado', None, url_for('comunidade.novo'), 'Criar grupo') }}</div></div>{% endfor %}
+</div>
+{% endblock %}

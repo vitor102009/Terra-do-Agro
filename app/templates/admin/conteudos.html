@@ -1,0 +1,24 @@
+{% extends "admin/_base.html" %}
+{% from "admin/_mod.html" import moderar with context %}
+{% block title %}Conteúdos · Administração{% endblock %}
+{% block admin %}
+<div class="d-flex gap-2 mb-3">{% for k, r in [('posts', 'Publicações'), ('vagas', 'Vagas'), ('grupos', 'Grupos'), ('avaliacoes', 'Avaliações')] %}<a class="cat-chip {% if aba == k %}active{% endif %}" href="{{ url_for('admin.conteudos', aba=k) }}">{{ r }}</a>{% endfor %}</div>
+<div class="card"><div class="table-responsive"><table class="table align-middle table-responsive-cards">
+  <tbody>
+  {% for o in itens %}<tr>
+    {% if aba == 'vagas' %}
+      <td data-label="Vaga"><a href="{{ url_for('vagas.detalhe', vid=o.id) }}">{{ o.cargo }}</a><small class="d-block text-muted">{{ o.empregador }} · {{ o.municipio }}/{{ o.uf }} · {{ o.status }}</small></td>
+      <td class="text-end" data-label="">{{ moderar('vaga', o.id, o.status == 'removida') }}</td>
+    {% elif aba == 'grupos' %}
+      <td data-label="Grupo"><a href="{{ url_for('comunidade.grupo', gid=o.id) }}">{{ o.nome }}</a><small class="d-block text-muted">{{ o.tema_label }} · {{ 'ativo' if o.ativo else 'desativado' }}</small></td>
+      <td class="text-end" data-label="">{{ moderar('grupo', o.id, not o.ativo) }}</td>
+    {% elif aba == 'avaliacoes' %}
+      <td data-label="Avaliação">{{ m.stars(o.nota) }} <span class="small">{{ o.comentario or '' }}</span><small class="d-block text-muted">{{ o.autor.nome }} → {{ o.perfil.user.nome }} · {{ 'oculta' if o.oculta else 'visível' }}</small></td>
+      <td class="text-end" data-label="">{{ moderar('avaliacao', o.id, o.oculta) }}</td>
+    {% else %}
+      <td data-label="Publicação"><a href="{{ url_for('feed.post', pid=o.id) }}">{{ (o.texto or '(mídia)')|truncate(120) }}</a><small class="d-block text-muted">{{ o.autor.nome }} · {{ o.created_at|datahora_br }}{% if o.removido %} · removida{% endif %}</small></td>
+      <td class="text-end" data-label="">{{ moderar('post', o.id, o.removido) }}</td>
+    {% endif %}
+  </tr>{% else %}<tr><td>{{ m.empty('bi-inbox', 'Nada por aqui') }}</td></tr>{% endfor %}
+  </tbody></table></div></div>
+{% endblock %}

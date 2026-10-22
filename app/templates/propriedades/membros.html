@@ -1,0 +1,57 @@
+{% extends "layouts/app.html" %}
+{% block title %}Acessos · {{ prop.nome }}{% endblock %}
+{% block content %}
+{{ m.page_head('Pessoas com acesso', prop.nome, back=url_for('propriedades.detalhe', pid=prop.id)) }}
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle table-responsive-cards">
+          <thead><tr><th>Pessoa</th><th>Permissão</th><th class="text-end">Ações</th></tr></thead>
+          <tbody>
+          {% for mb in lista %}
+            <tr>
+              <td data-label="Pessoa"><span class="fw-semibold">{{ mb.user.nome }}</span><small class="d-block text-muted">{{ mb.user.email }}</small></td>
+              <td data-label="Permissão">
+                {% if mb.papel == 'proprietario' %}{{ mb.papel_label }}{% else %}
+                <form method="post" class="d-flex gap-2">
+                  {{ m.csrf() }}<input type="hidden" name="acao" value="alterar"><input type="hidden" name="membro_id" value="{{ mb.id }}">
+                  <label class="visually-hidden" for="papel-{{ mb.id }}">Permissão de {{ mb.user.nome }}</label>
+                  <select class="form-select form-select-sm" id="papel-{{ mb.id }}" name="papel" data-autosubmit>
+                    {% for k, p in papeis.items() if k != 'proprietario' %}<option value="{{ k }}" {% if k == mb.papel %}selected{% endif %}>{{ p.label }}</option>{% endfor %}
+                  </select>
+                </form>{% endif %}
+              </td>
+              <td class="text-end" data-label="">
+                {% if mb.papel != 'proprietario' %}
+                <form method="post" data-confirm="Remover o acesso de {{ mb.user.nome }}?">{{ m.csrf() }}<input type="hidden" name="acao" value="remover"><input type="hidden" name="membro_id" value="{{ mb.id }}"><button class="btn btn-sm btn-outline-danger" type="submit">Remover</button></form>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card"><div class="card-header"><h2>Adicionar pessoa</h2></div><div class="card-body">
+      {{ m.form_errors() }}
+      <form method="post" novalidate>
+        {{ m.csrf() }}<input type="hidden" name="acao" value="adicionar">
+        <div class="row g-3">
+          {{ m.input('email', 'E-mail da conta', type='email', required=True, help='A pessoa precisa ter uma conta no Terra do Agro.') }}
+          {{ m.select('papel', 'Permissão', papeis_opcoes if papeis_opcoes is defined else {'gerente': papeis.gerente.label, 'operador': papeis.operador.label, 'consulta': papeis.consulta.label}, required=True, empty=None) }}
+          <div class="col-12"><button class="btn btn-primary w-100" type="submit">Conceder acesso</button></div>
+        </div>
+      </form>
+      <hr>
+      <ul class="small text-muted mb-0 ps-3">
+        <li><strong>Gerente:</strong> registra dados e acessa o financeiro.</li>
+        <li><strong>Operador:</strong> registra rebanho, sanidade e estoque, sem acesso ao financeiro.</li>
+        <li><strong>Somente consulta:</strong> visualiza os registros operacionais.</li>
+      </ul>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

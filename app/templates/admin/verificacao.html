@@ -1,0 +1,34 @@
+{% extends "admin/_base.html" %}
+{% block title %}Verificação · Administração{% endblock %}
+{% block admin %}
+{% set p = s.perfil %}
+{{ m.page_head('Verificação de ' ~ p.user.nome, p.categoria.nome, back=url_for('admin.verificacoes')) }}
+<div class="row g-3">
+  <div class="col-lg-7"><div class="card"><div class="card-body">
+    <dl class="dl-grid">
+      <div><dt>Nome</dt><dd>{{ p.user.nome }}</dd></div>
+      <div><dt>E-mail</dt><dd>{{ p.user.email }}</dd></div>
+      <div><dt>{{ p.categoria.registro_label or 'Registro' }}</dt><dd>{{ p.registro_numero or 'Não informado' }}{% if p.registro_uf %}/{{ p.registro_uf }}{% endif %}</dd></div>
+      <div><dt>Município</dt><dd>{{ p.municipio }}/{{ p.uf }}</dd></div>
+      <div><dt>Situação</dt><dd>{{ s.status }}</dd></div>
+    </dl>
+    <h2 class="h6 mt-3">Qualificações informadas</h2><p class="small text-pre">{{ p.qualificacoes or '—' }}</p>
+    {% if s.mensagem %}<h2 class="h6">Mensagem do profissional</h2><p class="small text-pre">{{ s.mensagem }}</p>{% endif %}
+    {% if s.documento %}<a class="btn btn-outline-primary" href="{{ url_for('admin.documento_verificacao', vid=s.id) }}" target="_blank" rel="noopener"><i class="bi bi-file-earmark-lock" aria-hidden="true"></i>Abrir documento enviado</a>{% endif %}
+    <p class="notice small mt-3 mb-0">Confira o documento e, quando possível, o número no cadastro público do conselho profissional ({{ p.categoria.registro_label or 'órgão competente' }}). Aprove somente após a conferência real.</p>
+  </div></div></div>
+  <div class="col-lg-5">
+    {% if s.status == 'pendente' %}
+    <div class="card"><div class="card-header"><h2>Decisão</h2></div><div class="card-body">
+      <form method="post">{{ m.csrf() }}
+        <label class="form-label" for="nota">Observação (obrigatória para recusa)</label>
+        <textarea class="form-control mb-3" id="nota" name="nota" rows="3"></textarea>
+        <div class="d-flex gap-2"><button class="btn btn-primary flex-fill" name="decisao" value="aprovada" type="submit">Aprovar verificação</button><button class="btn btn-outline-danger flex-fill" name="decisao" value="recusada" type="submit">Recusar</button></div>
+      </form>
+    </div></div>
+    {% else %}
+    <div class="card"><div class="card-body small">Decisão: <strong>{{ s.status }}</strong> por {{ s.analista.nome if s.analista else '—' }} em {{ s.analisado_em|datahora_br }}.{% if s.nota_admin %}<p class="mt-2 mb-0">{{ s.nota_admin }}</p>{% endif %}</div></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "layouts/app.html" %}
+{% block title %}{{ 'Editar insumo' if ins else 'Novo insumo' }}{% endblock %}
+{% block content %}
+{{ m.page_head('Editar insumo' if ins else 'Novo insumo', propriedade_atual.nome, back=url_for('insumos.detalhe', iid=ins.id) if ins else url_for('insumos.index')) }}
+<div class="card" style="max-width: 980px"><div class="card-body">
+  {{ m.form_errors() }}
+  <form method="post" novalidate>{{ m.csrf() }}
+    <div class="row g-3">
+      {{ m.input('nome', 'Nome do produto', required=True, col='col-md-6') }}
+      {{ m.select('categoria', 'Categoria', categorias, required=True, col='col-md-3', empty=None) }}
+      {{ m.select('unidade', 'Unidade de medida', unidades, required=True, col='col-md-3', empty=None) }}
+      {{ m.number('quantidade_minima', 'Quantidade mínima', col='col-md-3', help='Abaixo disso, gera alerta.') }}
+      {{ m.input('validade', 'Validade', type='date', col='col-md-3') }}
+      {{ m.input('fornecedor', 'Fornecedor', col='col-md-3') }}
+      {{ m.input('local_armazenamento', 'Local de armazenamento', col='col-md-3') }}
+      {% if ins %}{{ m.checkbox('ativo', 'Insumo ativo') }}{% endif %}
+    </div>
+    {% if not ins %}
+    <div class="form-section">Saldo inicial (opcional)</div>
+    <div class="row g-3">
+      {{ m.number('quantidade_inicial', 'Quantidade em estoque', col='col-md-4') }}
+      {{ m.money('custo_unitario', 'Custo por unidade (R$)', col='col-md-4') }}
+      {{ m.input('data_entrada', 'Data da entrada', type='date', col='col-md-4') }}
+      {% if pode('financeiro') %}
+      {{ m.checkbox('gerar_despesa', 'Esta é uma compra: lançar a despesa no financeiro', help='Use somente se a compra ainda não foi lançada no financeiro, para não duplicar o custo.') }}
+      <div class="col-12" data-show-when="gerar_despesa=1"><div class="row g-3">
+        {{ m.select('categoria_financeira_id', 'Categoria da despesa', cats, col='col-md-6') }}
+        <div class="col-md-6 d-flex align-items-end">{{ m.checkbox('pago', 'Já foi pago', col='') }}</div>
+      </div></div>
+      {% endif %}
+    </div>
+    {% endif %}
+    <div class="form-actions">
+      <a class="btn btn-outline-secondary" href="{{ url_for('insumos.index') }}">Cancelar</a>
+      <button class="btn btn-primary" type="submit">Salvar</button>
+    </div>
+  </form>
+</div></div>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "layouts/app.html" %}
+{% block title %}{{ 'Editar anúncio' if an else 'Novo anúncio' }}{% endblock %}
+{% block content %}
+{{ m.page_head('Editar anúncio' if an else 'Novo anúncio', 'Anuncie apenas produtos e serviços realmente disponíveis e permitidos por lei.', back=url_for('marketplace.detalhe', aid=an.id) if an else url_for('marketplace.index')) }}
+<div class="card" style="max-width: 1000px"><div class="card-body">
+  {{ m.form_errors() }}
+  <form method="post" enctype="multipart/form-data" novalidate>{{ m.csrf() }}
+    <div class="row g-3">
+      {{ m.select('categoria', 'Categoria', categorias, required=True, col='col-md-5') }}
+      {{ m.input('titulo', 'Título do anúncio', required=True, col='col-md-7') }}
+      {{ m.textarea('descricao', 'Descrição', required=True, rows=5, help='Estado de conservação, características, quantidade disponível.') }}
+    </div>
+    <div class="col-12 mt-3" data-show-when="categoria=animais">
+      <div class="form-section mt-0">Dados dos animais</div>
+      <div class="row g-3">
+        {{ m.select('especie', 'Espécie', especies, col='col-md-4') }}
+        {{ m.input('raca', 'Raça', col='col-md-4') }}
+        {{ m.input('quantidade', 'Quantidade de animais', type='number', col='col-md-4', attrs='min="1"') }}
+        {{ m.input('idade_meses', 'Idade aproximada (meses)', type='number', col='col-md-4', attrs='min="0"') }}
+        {{ m.select('sexo', 'Sexo', sexos, col='col-md-4', empty='Não informado') }}
+        {{ m.number('peso_medio_kg', 'Peso médio (kg)', col='col-md-4') }}
+        {{ m.textarea('documentacao', 'Documentação e sanidade', rows=2, help='Ex.: vacinas em dia, exames, registro genealógico. A GTA é emitida no momento do transporte.') }}
+      </div>
+    </div>
+    <div class="form-section">Preço e local</div>
+    <div class="row g-3">
+      {{ m.select('tipo_preco', 'Tipo de preço', tipos_preco, required=True, col='col-md-4', empty=None) }}
+      {{ m.money('preco', 'Preço (R$)', col='col-md-4') }}
+      {{ m.input('unidade_preco', 'Unidade do preço', col='col-md-4', placeholder='Ex.: por cabeça, por saca, por hora') }}
+      {{ m.input('municipio', 'Município', required=True, col='col-md-8', help='Mostramos apenas município e estado, nunca o endereço da propriedade.') }}
+      {{ m.uf(col='col-md-4') }}
+      {{ m.textarea('condicoes', 'Condições de negociação', rows=2, col='col-md-6') }}
+      {{ m.textarea('entrega', 'Entrega ou atendimento', rows=2, col='col-md-6') }}
+    </div>
+    <div class="form-section">Fotografias</div>
+    {% if an and an.fotos %}
+    <div class="d-flex flex-wrap gap-2 mb-3">{% for f in an.fotos %}
+      <div class="position-relative"><img src="{{ url_for('main.media', caminho=f.arquivo) }}" alt="Foto {{ loop.index }}" width="110" height="82" style="object-fit: cover; border-radius: 8px">
+        <button class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 py-0 px-1" type="submit" form="rm-foto-{{ f.id }}" aria-label="Remover foto {{ loop.index }}"><i class="bi bi-x" aria-hidden="true"></i></button></div>
+    {% endfor %}</div>
+    {% endif %}
+    <div class="row g-3">{{ m.file('fotos', 'Adicionar fotos', accept='image/jpeg,image/png,image/webp', multiple=True, help='Até ' ~ max_fotos ~ ' fotos, 5 MB cada (JPG, PNG ou WEBP).') }}</div>
+    <div class="form-actions">
+      <a class="btn btn-outline-secondary" href="{{ url_for('marketplace.meus') }}">Cancelar</a>
+      <button class="btn btn-primary" type="submit">{{ 'Salvar' if an else 'Publicar anúncio' }}</button>
+    </div>
+  </form>
+  {% if an %}{% for f in an.fotos %}<form id="rm-foto-{{ f.id }}" method="post" action="{{ url_for('marketplace.remover_foto', aid=an.id, fid=f.id) }}" data-confirm="Remover esta foto?">{{ m.csrf() }}</form>{% endfor %}{% endif %}
+</div></div>
+{% endblock %}

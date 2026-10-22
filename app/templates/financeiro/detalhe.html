@@ -1,0 +1,59 @@
+{% extends "layouts/app.html" %}
+{% block title %}{{ l.descricao }}{% endblock %}
+{% block content %}
+{% call m.page_head(l.descricao, tipos[l.tipo] ~ ' · ' ~ l.categoria.nome, back=url_for('financeiro.index')) %}
+  {% if not l.cancelado %}
+  <a class="btn btn-outline-primary" href="{{ url_for('financeiro.editar', lid=l.id) }}"><i class="bi bi-pencil" aria-hidden="true"></i>Editar</a>
+  {% if not l.pagamentos %}<form method="post" action="{{ url_for('financeiro.cancelar', lid=l.id) }}" data-confirm="Cancelar este lançamento? Ele deixará de entrar nos totais.">{{ m.csrf() }}<button class="btn btn-outline-danger" type="submit">Cancelar lançamento</button></form>{% endif %}
+  {% endif %}
+{% endcall %}
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card mb-3"><div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="fs-3 fw-bold {{ 'value-pos' if l.tipo == 'receita' else 'value-neg' }}">{{ l.valor|moeda }}</span>
+        {{ m.situacao_badge(l.situacao, l.situacao_label) }}
+      </div>
+      <dl class="dl-grid">
+        <div><dt>Competência</dt><dd>{{ l.data|data_br }}</dd></div>
+        <div><dt>Vencimento</dt><dd>{{ l.vencimento|data_br }}</dd></div>
+        <div><dt>{{ 'Recebido' if l.tipo == 'receita' else 'Pago' }}</dt><dd>{{ l.valor_pago|moeda }}</dd></div>
+        <div><dt>Em aberto</dt><dd>{{ l.saldo|moeda }}</dd></div>
+        <div><dt>Forma</dt><dd>{{ formas.get(l.forma, '—') }}</dd></div>
+        <div><dt>{{ 'Cliente' if l.tipo == 'receita' else 'Fornecedor' }}</dt><dd>{{ l.contraparte or '—' }}</dd></div>
+        <div><dt>Lote</dt><dd>{% if l.lote %}<a href="{{ url_for('lotes.detalhe', lid=l.lote.id) }}">{{ l.lote.nome }}</a>{% else %}—{% endif %}</dd></div>
+        <div><dt>Animal</dt><dd>{% if l.animal %}<a href="{{ url_for('animais.ficha', aid=l.animal.id) }}">{{ l.animal.identificacao }}</a>{% else %}—{% endif %}</dd></div>
+        <div><dt>Atividade</dt><dd>{{ atividades.get(l.atividade or '', '—') }}</dd></div>
+        <div><dt>Origem</dt><dd>{{ {'manual': 'Lançamento manual', 'estoque': 'Compra de insumo', 'animal': 'Compra/venda de animal', 'servico': 'Contratação de serviço', 'offline': 'Registro offline'}.get(l.origem, l.origem) }}</dd></div>
+      </dl>
+      {% if l.observacoes %}<hr><p class="text-pre mb-0">{{ l.observacoes }}</p>{% endif %}
+      {% if l.anexo %}<hr><a class="btn btn-sm btn-outline-primary" href="{{ url_for('financeiro.anexo', lid=l.id) }}"><i class="bi bi-paperclip" aria-hidden="true"></i>Baixar anexo</a>{% endif %}
+    </div></div>
+    <div class="card"><div class="card-header"><h2>{{ 'Recebimentos' if l.tipo == 'receita' else 'Pagamentos' }}</h2></div>
+      {% if l.pagamentos %}
+      <ul class="list-group list-group-flush">{% for p in l.pagamentos %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          <span>{{ p.data|data_br }}<small class="d-block text-muted">{{ formas.get(p.forma, '') }}</small></span>
+          <span class="d-flex align-items-center gap-2"><strong>{{ p.valor|moeda }}</strong>
+            <form method="post" action="{{ url_for('financeiro.estornar', lid=l.id, pgid=p.id) }}" data-confirm="Estornar este {{ 'recebimento' if l.tipo == 'receita' else 'pagamento' }}?">{{ m.csrf() }}<button class="btn btn-sm btn-link text-danger" type="submit">Estornar</button></form></span>
+        </li>{% endfor %}</ul>
+      {% else %}<div class="card-body text-muted small">Nenhum registro ainda.</div>{% endif %}
+    </div>
+  </div>
+  {% if not l.cancelado and l.saldo > 0 %}
+  <div class="col-lg-5">
+    <div class="card"><div class="card-header"><h2>Registrar {{ 'recebimento' if l.tipo == 'receita' else 'pagamento' }}</h2></div><div class="card-body">
+      {{ m.form_errors() }}
+      <form method="post" novalidate>{{ m.csrf() }}
+        <div class="row g-3">
+          {{ m.money('valor', 'Valor (R$)', required=True, col='col-6', help='Aceita valor parcial.') }}
+          {{ m.input('data', 'Data', type='date', required=True, col='col-6') }}
+          {{ m.select('forma', 'Forma', formas, col='col-12', empty='Não informada') }}
+          <div class="col-12"><button class="btn btn-primary w-100" type="submit">Registrar</button></div>
+        </div>
+      </form>
+    </div></div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

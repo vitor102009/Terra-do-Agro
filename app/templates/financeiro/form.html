@@ -1,0 +1,46 @@
+{% extends "layouts/app.html" %}
+{% set rotulo = 'receita' if tipo == 'receita' else 'despesa' %}
+{% block title %}{{ 'Editar ' ~ rotulo if lanc else 'Nova ' ~ rotulo }}{% endblock %}
+{% block content %}
+{{ m.page_head(('Editar ' if lanc else 'Nova ') ~ rotulo, propriedade_atual.nome, back=url_for('financeiro.detalhe', lid=lanc.id) if lanc else url_for('financeiro.index')) }}
+<div class="card" style="max-width: 980px"><div class="card-body">
+  {{ m.form_errors() }}
+  {% if lanc and lanc.origem != 'manual' %}<div class="notice mb-3">Este lançamento foi gerado automaticamente ({{ {'estoque': 'compra de insumo', 'animal': 'compra/venda de animal', 'servico': 'contratação de serviço', 'offline': 'registro offline'}.get(lanc.origem, lanc.origem) }}). Alterar o valor aqui não altera o registro de origem.</div>{% endif %}
+  <form method="post" enctype="multipart/form-data" novalidate>{{ m.csrf() }}
+    <div class="row g-3">
+      {{ m.input('descricao', 'Descrição', required=True, col='col-md-6') }}
+      {{ m.select('categoria_id', 'Categoria', cats, required=True, col='col-md-6', help='Gerencie em Financeiro › Categorias.') }}
+      {{ m.money('valor', 'Valor total (R$)', required=True, col='col-md-4') }}
+      {{ m.input('data', 'Data de competência', type='date', required=True, col='col-md-4', help='Data em que a ' ~ rotulo ~ ' ocorreu.') }}
+      {{ m.input('vencimento', 'Vencimento', type='date', col='col-md-4') }}
+      {{ m.select('forma', 'Forma de ' ~ ('recebimento' if tipo == 'receita' else 'pagamento'), formas, col='col-md-4', empty='Não informada') }}
+      {{ m.input('contraparte', 'Cliente / comprador' if tipo == 'receita' else 'Fornecedor / favorecido', col='col-md-8') }}
+    </div>
+    {% if not lanc %}
+    <div class="form-section">Situação do {{ 'recebimento' if tipo == 'receita' else 'pagamento' }}</div>
+    <div class="row g-3">
+      {{ m.select('situacao_inicial', 'Situação', {'pendente': 'Pendente', 'quitado': 'Recebido integralmente' if tipo == 'receita' else 'Pago integralmente', 'parcial': 'Parcialmente ' ~ ('recebido' if tipo == 'receita' else 'pago')}, required=True, col='col-md-4', empty=None) }}
+      <div class="col-md-4" data-show-when="situacao_inicial=quitado,parcial">{{ m.input('data_pagamento', 'Data do ' ~ ('recebimento' if tipo == 'receita' else 'pagamento'), type='date', col='') }}</div>
+      <div class="col-md-4" data-show-when="situacao_inicial=parcial">{{ m.money('valor_parcial', 'Valor já ' ~ ('recebido' if tipo == 'receita' else 'pago'), col='') }}</div>
+    </div>
+    {% endif %}
+    <div class="form-section">Custo de produção (opcional)</div>
+    <div class="row g-3">
+      {{ m.select('lote_id', 'Lote', lotes, col='col-md-4', empty='Nenhum') }}
+      {{ m.select('animal_id', 'Animal', animais, col='col-md-4', empty='Nenhum') }}
+      {{ m.select('atividade', 'Atividade', atividades, col='col-md-4', empty=None) }}
+      <div class="col-12"><p class="small text-muted mb-0">Associe a {{ rotulo }} a um lote, animal ou atividade para o relatório de custos. Sem vínculo, a despesa é tratada como custo compartilhado da propriedade.</p></div>
+    </div>
+    <div class="form-section">Complementos</div>
+    <div class="row g-3">
+      {{ m.textarea('observacoes', 'Observações', rows=2, col='col-md-8') }}
+      {{ m.file('anexo', 'Anexo (nota, recibo)', accept='application/pdf,image/jpeg,image/png', col='col-md-4', help='PDF, JPG ou PNG até 10 MB. Arquivo privado.') }}
+    </div>
+    <div class="form-actions">
+      <a class="btn btn-outline-secondary" href="{{ url_for('financeiro.index') }}">Cancelar</a>
+      {% if not lanc %}<button class="btn btn-outline-primary" type="submit" name="continuar" value="1">Salvar e lançar outra</button>{% endif %}
+      <button class="btn btn-primary" type="submit"><i class="bi bi-check2" aria-hidden="true"></i>Salvar</button>
+    </div>
+  </form>
+</div></div>
+{% endblock %}

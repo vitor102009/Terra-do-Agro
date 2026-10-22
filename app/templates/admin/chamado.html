@@ -1,0 +1,18 @@
+{% extends "admin/_base.html" %}
+{% block title %}Chamado · Administração{% endblock %}
+{% block admin %}
+{{ m.page_head(ch.assunto, tipos.get(ch.tipo) ~ ' · ' ~ ch.user.nome ~ ' (' ~ ch.user.email ~ ')', back=url_for('admin.suporte')) }}
+<div class="row g-3">
+  <div class="col-lg-7"><div class="card"><div class="card-body"><p class="small text-muted">{{ ch.created_at|datahora_br }}</p><p class="text-pre mb-0">{{ ch.mensagem }}</p></div></div>
+    {% if ch.resposta %}<div class="card mt-3"><div class="card-body"><p class="small text-muted">Resposta enviada em {{ ch.respondido_em|datahora_br }}</p><p class="text-pre mb-0">{{ ch.resposta }}</p></div></div>{% endif %}
+    {% if ch.tipo == 'lgpd_exclusao' %}<p class="notice mt-3 small">Pedido de exclusão: confirme a identidade do titular, suspenda a conta e remova ou anonimize os dados pessoais, preservando apenas os registros exigidos por obrigação legal. Documente a ação na resposta.</p>{% endif %}
+  </div>
+  <div class="col-lg-5"><div class="card"><div class="card-header"><h2>Responder</h2></div><div class="card-body">
+    <form method="post">{{ m.csrf() }}
+      <label class="form-label" for="resposta">Resposta ao usuário</label><textarea class="form-control mb-2" id="resposta" name="resposta" rows="5"></textarea>
+      <div class="form-check mb-3"><input class="form-check-input" type="checkbox" id="encerrar" name="encerrar" value="1"><label class="form-check-label" for="encerrar">Encerrar chamado</label></div>
+      <button class="btn btn-primary w-100" type="submit">Enviar</button>
+    </form>
+  </div></div></div>
+</div>
+{% endblock %}

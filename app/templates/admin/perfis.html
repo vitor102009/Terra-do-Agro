@@ -1,0 +1,22 @@
+{% extends "admin/_base.html" %}
+{% block title %}Perfis profissionais · Administração{% endblock %}
+{% block admin %}
+<form class="filters" method="get"><div class="row g-2 align-items-end">
+  <div class="col-12 col-md-5"><label class="form-label" for="q">Nome, título ou registro</label><input class="form-control" id="q" name="q" value="{{ args.get('q', '') }}"></div>
+  <div class="col-6 col-md-3"><div class="form-check"><input class="form-check-input" type="checkbox" id="verificado" name="verificado" value="1" {% if args.get('verificado') == '1' %}checked{% endif %}><label class="form-check-label" for="verificado">Somente verificados</label></div></div>
+  <div class="col-6 col-md-2"><button class="btn btn-primary w-100" type="submit">Buscar</button></div>
+</div></form>
+<div class="card"><div class="table-responsive"><table class="table align-middle table-responsive-cards">
+  <thead><tr><th>Profissional</th><th>Categoria</th><th>Situação</th><th class="text-end">Ações</th></tr></thead>
+  <tbody>{% for p in pag.items %}<tr>
+    <td data-label="Profissional"><a href="{{ url_for('profissionais.perfil', perfil_id=p.id) }}">{{ p.user.nome }}</a><small class="d-block text-muted">{{ p.titulo }}</small></td>
+    <td data-label="Categoria">{{ p.categoria.nome }}</td>
+    <td data-label="Situação">{% if p.verificado %}<span class="badge badge-verified">Verificado</span>{% endif %} <span class="badge {{ 'badge-soft-green' if p.publico else 'badge-soft-gray' }}">{{ 'Público' if p.publico else 'Oculto' }}</span>{% if p.is_demo %} <span class="badge badge-demo">demo</span>{% endif %}</td>
+    <td class="text-end" data-label="">
+      <form class="d-inline" method="post" action="{{ url_for('admin.perfil_acao', pid=p.id) }}">{{ m.csrf() }}
+        {% if p.verificado %}<button class="btn btn-sm btn-outline-danger" name="acao" value="remover_verificacao" type="submit">Remover selo</button>{% endif %}
+        <button class="btn btn-sm btn-outline-secondary" name="acao" value="{{ 'ocultar' if p.publico else 'publicar' }}" type="submit">{{ 'Ocultar' if p.publico else 'Publicar' }}</button>
+      </form>
+    </td></tr>{% endfor %}</tbody></table></div></div>
+{{ m.pagination(pag, 'admin.perfis') }}
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "admin/_base.html" %}
+{% block title %}Comunicados · Administração{% endblock %}
+{% block admin %}
+<div class="card" style="max-width: 760px"><div class="card-header"><h2>Enviar notificação administrativa</h2></div><div class="card-body">
+  <p class="small text-muted">O comunicado é entregue como notificação interna. Nenhum e-mail ou push é disparado.</p>
+  <form method="post" novalidate>{{ m.csrf() }}
+    <div class="row g-3">
+      {{ m.input('titulo', 'Título', required=True) }}
+      {{ m.textarea('mensagem', 'Mensagem', required=True, rows=3, help='Até 500 caracteres.') }}
+      {{ m.select('papel', 'Destinatários', papeis, empty='Todos os usuários ativos') }}
+      <div class="col-12"><button class="btn btn-primary" type="submit" data-confirm="Enviar este comunicado?">Enviar</button></div>
+    </div>
+  </form>
+</div></div>
+{% endblock %}

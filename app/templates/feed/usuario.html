@@ -1,0 +1,21 @@
+{% extends "layouts/app.html" %}
+{% block title %}{{ u.nome }}{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="card"><div class="profile-cover"></div><div class="profile-head">
+      {{ m.avatar(u, 'avatar-lg avatar-gold') }}
+      <h1 class="h4 mt-2 mb-0">{{ u.nome }}</h1>
+      <div class="small text-muted">{% if u.municipio %}{{ u.municipio }}/{{ u.uf }} · {% endif %}na plataforma desde {{ u.created_at.strftime('%m/%Y') }}</div>
+      {% if u.bio %}<p class="small mt-2 text-pre">{{ u.bio }}</p>{% endif %}
+      {% if perfis %}<div class="mt-2">{% for pf in perfis %}<a class="badge badge-soft-green me-1" href="{{ url_for('profissionais.perfil', perfil_id=pf.id) }}">{{ pf.categoria.nome }}{% if pf.verificado %} · verificado{% endif %}</a>{% endfor %}</div>{% endif %}
+      {% if u.id != current_user.id %}<div class="d-flex gap-2 mt-3"><a class="btn btn-sm btn-primary" href="{{ url_for('chat.iniciar', user_id=u.id) }}">Mensagem</a>{{ m.denunciar('usuario', u.id) }}</div>{% endif %}
+    </div></div>
+  </div>
+  <div class="col-lg-8">
+    <h2 class="h5">Publicações</h2>
+    {% set grupo = None %}
+    {% for p in posts %}{% include "feed/_post.html" %}{% else %}<div class="card">{{ m.empty('bi-newspaper', 'Nenhuma publicação') }}</div>{% endfor %}
+  </div>
+</div>
+{% endblock %}

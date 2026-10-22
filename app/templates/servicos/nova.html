@@ -1,0 +1,27 @@
+{% extends "layouts/app.html" %}
+{% block title %}{{ tipos[v.get('tipo', 'orcamento')] }}{% endblock %}
+{% block content %}
+{{ m.page_head(tipos[v.get('tipo', 'orcamento')], perfil.user.nome ~ ' · ' ~ perfil.categoria.nome, back=url_for('profissionais.perfil', perfil_id=perfil.id)) }}
+<div class="card" style="max-width: 900px"><div class="card-body">
+  {{ m.form_errors() }}
+  <form method="post" enctype="multipart/form-data" novalidate>{{ m.csrf() }}
+    <input type="hidden" name="perfil" value="{{ perfil.id }}">
+    <div class="row g-3">
+      {{ m.select('tipo', 'Tipo de solicitação', tipos, required=True, col='col-md-4', empty=None) }}
+      {{ m.input('titulo', 'Resumo do serviço', required=True, col='col-md-8', placeholder='Ex.: Diagnóstico de gestação em 40 matrizes') }}
+      {{ m.textarea('descricao', 'Descreva o problema ou o serviço desejado', required=True, rows=5) }}
+      {{ m.input('data_desejada', 'Data desejada', type='date', col='col-md-4') }}
+      {% if props %}{{ m.select('propriedade_id', 'Propriedade', props, col='col-md-8', empty='Não vincular') }}{% endif %}
+      {{ m.input('municipio', 'Município do atendimento', col='col-md-8', help='Se vincular a propriedade, pode deixar em branco. O endereço completo não é compartilhado automaticamente.') }}
+      {{ m.uf(required=False, col='col-md-4') }}
+      {{ m.textarea('observacoes', 'Observações', rows=2, col='col-md-8') }}
+      {{ m.file('anexo', 'Anexo (opcional)', accept='application/pdf,image/jpeg,image/png', col='col-md-4', help='Exames, fotos ou documentos. Até 10 MB.') }}
+    </div>
+    <p class="small text-muted mt-3 mb-0">O profissional poderá responder com um orçamento ou agendar o atendimento. Valores, pagamento e execução são combinados entre as partes; a plataforma registra o andamento.</p>
+    <div class="form-actions">
+      <a class="btn btn-outline-secondary" href="{{ url_for('profissionais.perfil', perfil_id=perfil.id) }}">Cancelar</a>
+      <button class="btn btn-primary" type="submit">Enviar solicitação</button>
+    </div>
+  </form>
+</div></div>
+{% endblock %}

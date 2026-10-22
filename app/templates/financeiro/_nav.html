@@ -1,0 +1,8 @@
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item"><a class="nav-link {% if request.endpoint == 'financeiro.index' %}active{% endif %}" href="{{ url_for('financeiro.index') }}">Lançamentos</a></li>
+  <li class="nav-item"><a class="nav-link {% if request.endpoint == 'financeiro.contas' and tipo == 'pagar' %}active{% endif %}" href="{{ url_for('financeiro.contas', tipo='pagar') }}">Contas a pagar</a></li>
+  <li class="nav-item"><a class="nav-link {% if request.endpoint == 'financeiro.contas' and tipo == 'receber' %}active{% endif %}" href="{{ url_for('financeiro.contas', tipo='receber') }}">Contas a receber</a></li>
+  <li class="nav-item"><a class="nav-link {% if request.endpoint == 'financeiro.fluxo' %}active{% endif %}" href="{{ url_for('financeiro.fluxo') }}">Fluxo de caixa</a></li>
+  <li class="nav-item"><a class="nav-link" href="{{ url_for('relatorios.custos') }}">Custos de produção</a></li>
+  <li class="nav-item"><a class="nav-link {% if request.endpoint == 'financeiro.categorias_view' %}active{% endif %}" href="{{ url_for('financeiro.categorias_view') }}">Categorias</a></li>
+</ul>

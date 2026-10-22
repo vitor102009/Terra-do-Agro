@@ -1,0 +1,56 @@
+{% extends "layouts/app.html" %}
+{% block title %}{{ 'Editar perfil profissional' if p else 'Novo perfil profissional' }}{% endblock %}
+{% block content %}
+{{ m.page_head('Editar perfil profissional' if p else 'Novo perfil profissional', 'Informe apenas serviços compatíveis com sua formação e habilitação legal.', back=url_for('profissionais.meus')) }}
+<div class="card" style="max-width: 1000px"><div class="card-body">
+  {{ m.form_errors() }}
+  <form method="post" novalidate>{{ m.csrf() }}
+    <div class="form-section">Atuação</div>
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label required" for="f-categoria_id">Profissão / categoria</label>
+        <select class="form-select{% if e.get('categoria_id') %} is-invalid{% endif %}" id="f-categoria_id" name="categoria_id" required>
+          <option value="">Selecione</option>
+          {% for gk, gr in grupos.items() %}{% set itens = cats|selectattr('grupo', 'equalto', gk)|list %}{% if itens %}
+          <optgroup label="{{ gr }}">{% for c in itens %}<option value="{{ c.id }}" {% if v.get('categoria_id')|string == c.id|string %}selected{% endif %}>{{ c.nome }}</option>{% endfor %}</optgroup>
+          {% endif %}{% endfor %}
+        </select>
+        {% if e.get('categoria_id') %}<div class="invalid-feedback d-block">{{ e.get('categoria_id') }}</div>{% endif %}
+      </div>
+      {{ m.input('titulo', 'Título do perfil', required=True, col='col-md-6', placeholder='Ex.: Clínica e reprodução de bovinos de corte') }}
+      {{ m.textarea('descricao', 'Descrição dos serviços prestados', required=True, rows=4, help='Mínimo de 30 caracteres.') }}
+      {{ m.input('especialidades', 'Especialidades', help='Separe por vírgulas. Ex.: reprodução, IATF, sanidade de rebanho', col='col-12') }}
+    </div>
+    <div class="form-section">Registro e qualificações</div>
+    <div class="row g-3">
+      {{ m.input('registro_numero', 'Número do registro profissional (CRMV, CREA, CRBio, CFTA…)', col='col-md-6', help='Quando aplicável à sua profissão. A conferência é feita pela equipe mediante documento.') }}
+      {{ m.uf('registro_uf', 'UF do registro', required=False, col='col-md-2') }}
+      {{ m.textarea('qualificacoes', 'Formação e qualificações', rows=3, col='col-md-6') }}
+      {{ m.textarea('experiencia', 'Experiência profissional', rows=3, col='col-md-6') }}
+    </div>
+    <div class="form-section">Atendimento</div>
+    <div class="row g-3">
+      {{ m.input('municipio', 'Município base', required=True, col='col-md-5') }}
+      {{ m.uf(col='col-md-2') }}
+      {{ m.input('raio_km', 'Raio de atendimento (km)', type='number', col='col-md-2', attrs='min="0"') }}
+      {{ m.input('disponibilidade', 'Disponibilidade', col='col-md-3', placeholder='Ex.: seg a sáb, plantão') }}
+      {{ m.textarea('regioes_atendidas', 'Regiões / municípios atendidos', rows=2, col='col-md-6') }}
+      {{ m.checkgroup('modalidades', 'Modalidades de atendimento', modalidades, col='col-md-6') }}
+      {{ m.input('preco_info', 'Preços ou condições de orçamento', col='col-md-6', placeholder='Ex.: visita a partir de R$ 250, consulte deslocamento') }}
+      {{ m.money('preco_minimo', 'Preço a partir de (R$, opcional)', col='col-md-3', help='Usado no filtro de faixa de preço.') }}
+      <div class="col-md-3 d-flex flex-column justify-content-end">{{ m.checkbox('disponivel', 'Disponível para novos atendimentos', col='') }}</div>
+    </div>
+    <div class="form-section">Complementos</div>
+    <div class="row g-3">
+      {{ m.textarea('equipamentos', 'Equipamentos disponíveis (máquinas, aparelhos)', rows=2, col='col-md-6') }}
+      {{ m.textarea('portfolio', 'Portfólio / trabalhos realizados', rows=2, col='col-md-6') }}
+      {{ m.checkbox('publico', 'Exibir este perfil na busca de profissionais') }}
+    </div>
+    <div class="form-actions">
+      <a class="btn btn-outline-secondary" href="{{ url_for('profissionais.meus') }}">Cancelar</a>
+      <button class="btn btn-outline-primary" type="submit" name="ir_servicos" value="1">Salvar e cadastrar serviços</button>
+      <button class="btn btn-primary" type="submit">Salvar perfil</button>
+    </div>
+  </form>
+</div></div>
+{% endblock %}

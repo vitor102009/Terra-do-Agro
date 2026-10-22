@@ -1,0 +1,25 @@
+{% extends "layouts/auth.html" %}
+{% block title %}Recuperar senha{% endblock %}
+{% block auth %}
+<h1 class="mb-1">Recuperar senha</h1>
+{% if enviado %}
+<div class="alert alert-success mt-3" role="status">
+  Se houver uma conta ativa com este e-mail, enviaremos um link para redefinir a senha. O link vale por 1 hora.
+</div>
+{% if not email_ok %}
+<p class="notice">Este servidor ainda não tem envio de e-mail configurado. Em ambiente de desenvolvimento, a mensagem é gravada na pasta <code>instance/mail_outbox</code>. Em produção, o administrador deve configurar o SMTP no arquivo <code>.env</code>.</p>
+{% endif %}
+<a class="btn btn-outline-primary w-100 mt-2" href="{{ url_for('auth.login') }}">Voltar para o login</a>
+{% else %}
+<p class="text-muted mb-4">Informe o e-mail da sua conta. Enviaremos um link seguro para criar uma nova senha.</p>
+{{ m.form_errors() }}
+<form method="post" novalidate data-loading>
+  {{ m.csrf() }}
+  <div class="row g-3">
+    {{ m.input('email', 'E-mail', type='email', required=True, attrs='autocomplete="email" autofocus') }}
+    <div class="col-12"><button class="btn btn-primary w-100 btn-lg" type="submit">Enviar link</button></div>
+  </div>
+</form>
+<p class="text-center mt-4 mb-0"><a href="{{ url_for('auth.login') }}">Voltar para o login</a></p>
+{% endif %}
+{% endblock %}

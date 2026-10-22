@@ -1,0 +1,30 @@
+{% extends "layouts/app.html" %}
+{% block title %}Categorias financeiras{% endblock %}
+{% block content %}
+{{ m.page_head('Categorias financeiras', 'Categorias padrão valem para todas as propriedades. As personalizadas são desta propriedade.') }}
+{% include "financeiro/_nav.html" %}
+<div class="row g-3">
+  <div class="col-lg-7">
+    {% for t, rot in tipos.items() %}
+    <div class="card mb-3"><div class="card-header"><h2>{{ rot }}s</h2></div>
+      <ul class="list-group list-group-flush">{% for c in cats if c.tipo == t %}
+        <li class="list-group-item d-flex justify-content-between align-items-center"><span>{{ c.nome }}</span>
+          {% if c.propriedade_id %}<form method="post" data-confirm="Remover a categoria {{ c.nome }}?">{{ m.csrf() }}<button class="btn btn-sm btn-outline-danger" name="remover" value="{{ c.id }}" type="submit">Remover</button></form>{% else %}<span class="badge badge-soft-gray">padrão</span>{% endif %}</li>
+      {% endfor %}</ul>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="col-lg-5">
+    <div class="card"><div class="card-header"><h2>Nova categoria</h2></div><div class="card-body">
+      {{ m.form_errors() }}
+      <form method="post" novalidate>{{ m.csrf() }}
+        <div class="row g-3">
+          {{ m.select('tipo', 'Tipo', tipos, required=True, empty=None) }}
+          {{ m.input('nome', 'Nome', required=True) }}
+          <div class="col-12"><button class="btn btn-primary w-100" type="submit">Criar</button></div>
+        </div>
+      </form>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

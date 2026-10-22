@@ -1,0 +1,18 @@
+{% extends "layouts/app.html" %}
+{% block title %}Vagas que publiquei{% endblock %}
+{% block content %}
+{% call m.page_head('Vagas que publiquei') %}<a class="btn btn-primary" href="{{ url_for('vagas.nova') }}"><i class="bi bi-plus-lg" aria-hidden="true"></i>Publicar vaga</a>{% endcall %}
+{% include "vagas/_nav.html" %}
+<div class="card">
+  {% if vagas %}<div class="table-responsive"><table class="table table-hover align-middle table-responsive-cards">
+    <thead><tr><th>Cargo</th><th>Local</th><th>Situação</th><th class="num">Candidaturas</th><th>Publicada</th></tr></thead>
+    <tbody>{% for vg in vagas %}<tr>
+      <td data-label="Cargo"><a class="fw-semibold" href="{{ url_for('vagas.detalhe', vid=vg.id) }}">{{ vg.cargo }}</a></td>
+      <td data-label="Local">{{ vg.municipio }}/{{ vg.uf }}</td>
+      <td data-label="Situação">{{ m.situacao_badge(vg.status, vg.status|capitalize) }}</td>
+      <td class="num" data-label="Candidaturas">{{ vg.candidaturas|length }}</td>
+      <td data-label="Publicada">{{ vg.created_at|data_br }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}{{ m.empty('bi-briefcase', 'Você ainda não publicou vagas', None, url_for('vagas.nova'), 'Publicar vaga') }}{% endif %}
+</div>
+{% endblock %}

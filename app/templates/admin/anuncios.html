@@ -1,0 +1,18 @@
+{% extends "admin/_base.html" %}
+{% from "admin/_mod.html" import moderar with context %}
+{% block title %}Anúncios · Administração{% endblock %}
+{% block admin %}
+<form class="filters" method="get"><div class="row g-2 align-items-end">
+  <div class="col-12 col-md-5"><label class="form-label" for="q">Título</label><input class="form-control" id="q" name="q" value="{{ args.get('q', '') }}"></div>
+  <div class="col-6 col-md-3"><label class="form-label" for="status">Situação</label><select class="form-select" id="status" name="status"><option value="">Todas</option>{% for s in ['ativo', 'pausado', 'vendido', 'removido'] %}<option {% if args.get('status') == s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></div>
+  <div class="col-6 col-md-2"><button class="btn btn-primary w-100" type="submit">Filtrar</button></div>
+</div></form>
+<div class="card"><div class="table-responsive"><table class="table align-middle table-responsive-cards">
+  <thead><tr><th>Anúncio</th><th>Anunciante</th><th>Situação</th><th class="text-end">Moderação</th></tr></thead>
+  <tbody>{% for an in pag.items %}<tr>
+    <td data-label="Anúncio"><a href="{{ url_for('marketplace.detalhe', aid=an.id) }}">{{ an.titulo }}</a><small class="d-block text-muted">{{ an.categoria_label }} · {{ an.created_at|data_br }}</small></td>
+    <td data-label="Anunciante"><a href="{{ url_for('admin.usuario', uid=an.user_id) }}">{{ an.autor.nome }}</a></td>
+    <td data-label="Situação">{{ m.situacao_badge(an.status, an.status) }}{% if an.is_demo %} <span class="badge badge-demo">demo</span>{% endif %}</td>
+    <td class="text-end" data-label="">{{ moderar('anuncio', an.id, an.status == 'removido') }}</td></tr>{% endfor %}</tbody></table></div></div>
+{{ m.pagination(pag, 'admin.anuncios') }}
+{% endblock %}

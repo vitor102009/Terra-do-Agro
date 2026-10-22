@@ -1,0 +1,37 @@
+{% extends "admin/_base.html" %}
+{% block title %}Cotações · Administração{% endblock %}
+{% block admin %}
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="card mb-3"><div class="card-header"><h2>Registrar cotação</h2></div><div class="card-body">
+      <p class="small text-muted">Informe apenas valores obtidos de uma fonte verificável (boletins CEPEA/ESALQ, cooperativas, bolsas, indicadores oficiais), com a data de referência publicada pela fonte.</p>
+      {{ m.form_errors() }}
+      <form method="post" novalidate>{{ m.csrf() }}
+        <div class="row g-3">
+          {{ m.input('produto', 'Produto', required=True, col='col-md-6', attrs='list="lista-prod"') }}
+          <datalist id="lista-prod">{% for p in ['Arroba do boi gordo', 'Bezerro', 'Leite ao produtor', 'Milho', 'Soja', 'Café', 'Algodão', 'Trigo'] %}<option value="{{ p }}">{% endfor %}</datalist>
+          {{ m.input('praca', 'Praça / região', required=True, col='col-md-6') }}
+          {{ m.money('valor', 'Valor (R$)', required=True, col='col-md-4') }}
+          {{ m.input('unidade', 'Unidade', required=True, col='col-md-5', placeholder='@, saca 60 kg, litro') }}
+          {{ m.uf(required=False, col='col-md-3') }}
+          {{ m.input('fonte', 'Fonte', required=True, col='col-md-6') }}
+          {{ m.input('data_referencia', 'Data de referência', type='date', required=True, col='col-md-6') }}
+          {{ m.input('fonte_url', 'Endereço da fonte (opcional)', col='col-12') }}
+          <div class="col-12"><button class="btn btn-primary w-100" type="submit">Registrar</button></div>
+        </div>
+      </form>
+    </div></div>
+    <div class="card"><div class="card-header"><h2>Importar CSV</h2></div><div class="card-body">
+      <p class="small text-muted">Separador ponto e vírgula, UTF-8. Colunas: <code>produto;praca;uf;valor;unidade;fonte;fonte_url;data</code>. Se alguma linha for inválida, nada é gravado.</p>
+      <form method="post" enctype="multipart/form-data">{{ m.csrf() }}<input class="form-control mb-2" type="file" name="csv" accept=".csv,text/csv" aria-label="Arquivo CSV" required><button class="btn btn-outline-primary w-100" type="submit">Importar</button></form>
+    </div></div>
+  </div>
+  <div class="col-lg-7"><div class="card"><div class="card-header"><h2>Registros</h2></div>
+    {% if itens %}<div class="table-responsive"><table class="table table-sm align-middle">
+      <thead><tr><th>Data</th><th>Produto</th><th>Praça</th><th class="num">Valor</th><th>Fonte</th><th></th></tr></thead>
+      <tbody>{% for c in itens %}<tr><td>{{ c.data_referencia|data_br }}</td><td>{{ c.produto }}</td><td>{{ c.praca }}</td><td class="num">{{ c.valor|moeda }}<small class="d-block text-muted">{{ c.unidade }}</small></td><td class="small">{{ c.fonte }}</td>
+        <td><form method="post" data-confirm="Remover este registro?">{{ m.csrf() }}<button class="btn btn-sm btn-link text-danger" name="remover" value="{{ c.id }}" type="submit" aria-label="Remover"><i class="bi bi-trash" aria-hidden="true"></i></button></form></td></tr>{% endfor %}</tbody>
+    </table></div>{% else %}<div class="card-body small text-muted">Nenhuma cotação registrada.</div>{% endif %}
+  </div></div>
+</div>
+{% endblock %}

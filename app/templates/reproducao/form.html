@@ -1,0 +1,37 @@
+{% extends "layouts/app.html" %}
+{% block title %}Evento reprodutivo{% endblock %}
+{% block content %}
+{{ m.page_head('Registrar evento reprodutivo', propriedade_atual.nome, back=url_for('reproducao.index')) }}
+<div class="card" style="max-width: 900px"><div class="card-body">
+  {{ m.form_errors() }}
+  <form method="post" novalidate>{{ m.csrf() }}
+    <div class="row g-3">
+      {{ m.select('animal_id', 'Fêmea (brinco)', femeas, required=True, col='col-md-4') }}
+      {{ m.select('tipo', 'Evento', tipos, required=True, col='col-md-4', empty=None) }}
+      {{ m.input('data', 'Data', type='date', required=True, col='col-md-4') }}
+      <div class="col-12" data-show-when="tipo=cobertura,inseminacao"><div class="row g-3">
+        {{ m.select('reprodutor_id', 'Reprodutor da propriedade', machos, col='col-md-6', empty='Não se aplica') }}
+        {{ m.input('reprodutor_descricao', 'Touro externo, sêmen ou partida', col='col-md-6') }}
+      </div></div>
+      <div class="col-12" data-show-when="tipo=diagnostico"><div class="row g-3">
+        {{ m.select('diagnostico_resultado', 'Resultado informado', resultados, col='col-md-6') }}
+        {{ m.input('metodo_diagnostico', 'Método', col='col-md-6', placeholder='Ex.: ultrassonografia, palpação retal') }}
+        <div class="col-12"><p class="notice mb-0">Registre o resultado conforme informado pelo profissional que realizou o exame. O sistema não faz diagnósticos. Com resultado positivo e um serviço anterior registrado, é calculada uma previsão estimada de parto pela duração média de gestação da espécie.</p></div>
+      </div></div>
+      <div class="col-12" data-show-when="tipo=parto"><div class="row g-3">
+        {{ m.checkbox('registrar_cria', 'Cadastrar a cria no rebanho') }}
+        {{ m.input('cria_brinco', 'Brinco da cria', col='col-md-4') }}
+        {{ m.select('cria_sexo', 'Sexo da cria', sexos, col='col-md-4') }}
+        {{ m.number('cria_peso', 'Peso ao nascer (kg)', col='col-md-4') }}
+      </div></div>
+      {{ m.input('responsavel', 'Responsável pelo procedimento / diagnóstico', col='col-md-6', help='Obrigatório para diagnósticos.') }}
+      {{ m.select('profissional_id', 'Profissional contratado (opcional)', profs, col='col-md-6', empty='Nenhum') }}
+      {{ m.textarea('observacoes', 'Observações', rows=3) }}
+    </div>
+    <div class="form-actions">
+      <a class="btn btn-outline-secondary" href="{{ url_for('reproducao.index') }}">Cancelar</a>
+      <button class="btn btn-primary" type="submit">Salvar</button>
+    </div>
+  </form>
+</div></div>
+{% endblock %}

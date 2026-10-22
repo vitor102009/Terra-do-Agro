@@ -1,0 +1,76 @@
+{% extends "layouts/app.html" %}
+{% block title %}{{ ins.nome }}{% endblock %}
+{% block content %}
+{% call m.page_head(ins.nome, (ins.local_armazenamento or 'Local não informado') ~ (' · ' ~ ins.fornecedor if ins.fornecedor else ''), back=url_for('insumos.index')) %}
+  {% if pode('editar') %}<a class="btn btn-outline-primary" href="{{ url_for('insumos.editar', iid=ins.id) }}"><i class="bi bi-pencil" aria-hidden="true"></i>Editar</a>{% endif %}
+{% endcall %}
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-3"><div class="card kpi {{ 'kpi-danger' if ins.estoque_baixo else '' }}"><div class="label"><i class="bi bi-box-seam" aria-hidden="true"></i>Disponível</div><div class="value">{{ ins.quantidade|numero(2) }} {{ ins.unidade }}</div>{% if ins.estoque_baixo %}<div class="hint">Abaixo do mínimo ({{ ins.quantidade_minima|numero(2) }})</div>{% endif %}</div></div>
+  <div class="col-6 col-md-3"><div class="card kpi"><div class="label"><i class="bi bi-flag" aria-hidden="true"></i>Mínimo</div><div class="value">{{ ins.quantidade_minima|numero(2) }}</div></div></div>
+  {% if pode('financeiro') %}<div class="col-6 col-md-3"><div class="card kpi"><div class="label"><i class="bi bi-cash" aria-hidden="true"></i>Custo médio</div><div class="value">{{ ins.custo_medio|moeda }}</div><div class="hint">por {{ ins.unidade }}</div></div></div>{% endif %}
+  <div class="col-6 col-md-3"><div class="card kpi"><div class="label"><i class="bi bi-calendar-x" aria-hidden="true"></i>Validade</div><div class="value">{{ ins.validade|data_br }}</div></div></div>
+</div>
+<div class="row g-3">
+  {% if pode('editar') and ins.ativo %}
+  <div class="col-xl-5">
+    <div class="card">
+      <div class="card-header p-0 border-0">
+        <ul class="nav nav-tabs w-100 px-2 pt-2">
+          {% for k, r in tipos.items() %}<li class="nav-item"><a class="nav-link {% if aba == k %}active{% endif %}" href="{{ url_for('insumos.detalhe', iid=ins.id, aba=k) }}">{{ r }}</a></li>{% endfor %}
+        </ul>
+      </div>
+      <div class="card-body">
+        {{ m.form_errors() }}
+        <form method="post" action="{{ url_for('insumos.movimentar', iid=ins.id, tipo=aba if aba in tipos else 'entrada') }}" novalidate>{{ m.csrf() }}
+          <div class="row g-3">
+            {{ m.input('data', 'Data', type='date', required=True, col='col-6') }}
+            {% if aba == 'saida' %}
+              {{ m.number('quantidade', 'Quantidade (' ~ ins.unidade ~ ')', required=True, col='col-6') }}
+              {{ m.select('lote_id', 'Destinado ao lote', lotes, col='col-6', empty='Não se aplica') }}
+              {{ m.select('atividade', 'Atividade', atividades, col='col-6', empty=None) }}
+              {{ m.textarea('justificativa', 'Observação', rows=2) }}
+              <div class="col-12"><p class="small text-muted mb-0">A saída não cria nova despesa: o custo médio é apropriado ao lote/atividade no relatório de custos.</p></div>
+            {% elif aba == 'ajuste' %}
+              {{ m.number('quantidade_contada', 'Quantidade contada (' ~ ins.unidade ~ ')', required=True, col='col-6') }}
+              {{ m.textarea('justificativa', 'Justificativa do ajuste', required=True, rows=2) }}
+            {% else %}
+              {{ m.number('quantidade', 'Quantidade (' ~ ins.unidade ~ ')', required=True, col='col-6') }}
+              {{ m.money('custo_unitario', 'Custo por unidade (R$)', col='col-6') }}
+              {{ m.input('fornecedor', 'Fornecedor', col='col-6') }}
+              {{ m.input('validade', 'Validade do lote', type='date', col='col-6') }}
+              {% if pode('financeiro') %}
+              {{ m.checkbox('gerar_despesa', 'Lançar esta compra como despesa no financeiro', help='Marque somente se a compra ainda não foi lançada, para não duplicar.') }}
+              <div class="col-12" data-show-when="gerar_despesa=1"><div class="row g-3">
+                {{ m.select('categoria_financeira_id', 'Categoria da despesa', cats, col='col-12') }}
+                {{ m.input('vencimento', 'Vencimento', type='date', col='col-6') }}
+                <div class="col-6 d-flex align-items-end">{{ m.checkbox('pago', 'Já foi pago', col='') }}</div>
+              </div></div>
+              {% endif %}
+            {% endif %}
+            <div class="col-12"><button class="btn btn-primary w-100" type="submit">Registrar {{ tipos.get(aba, 'entrada')|lower }}</button></div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  <div class="{{ 'col-xl-7' if pode('editar') and ins.ativo else 'col-12' }}">
+    <div class="card"><div class="card-header"><h2>Histórico de movimentações</h2></div>
+      {% if ins.movimentacoes %}
+      <div class="table-responsive"><table class="table table-sm align-middle table-responsive-cards">
+        <thead><tr><th>Data</th><th>Tipo</th><th class="num">Quantidade</th>{% if pode('financeiro') %}<th class="num">Custo</th>{% endif %}<th>Destino / observação</th><th>Por</th></tr></thead>
+        <tbody>{% for mv in ins.movimentacoes %}
+          <tr>
+            <td data-label="Data">{{ mv.data|data_br }}</td>
+            <td data-label="Tipo"><span class="badge {{ {'entrada': 'badge-soft-green', 'saida': 'badge-soft-gold', 'ajuste': 'badge-soft-blue'}[mv.tipo] }}">{{ tipos[mv.tipo] }}</span></td>
+            <td class="num" data-label="Quantidade">{{ '+' if mv.tipo == 'entrada' or (mv.tipo == 'ajuste' and mv.quantidade > 0) else ('−' if mv.tipo == 'saida' else '') }}{{ mv.quantidade|numero(2) }}</td>
+            {% if pode('financeiro') %}<td class="num" data-label="Custo">{{ mv.custo_total|moeda if mv.custo_total else '—' }}{% if mv.lancamento_id %}<a class="d-block small" href="{{ url_for('financeiro.detalhe', lid=mv.lancamento_id) }}">despesa lançada</a>{% endif %}</td>{% endif %}
+            <td data-label="Destino" class="small">{% if mv.lote %}Lote {{ mv.lote.nome }}{% endif %}{% if mv.animal %} Animal {{ mv.animal.identificacao }}{% endif %}{% if mv.fornecedor %}{{ mv.fornecedor }}{% endif %}{% if mv.justificativa %}<span class="d-block text-muted">{{ mv.justificativa }}</span>{% endif %}</td>
+            <td data-label="Por" class="small">{{ mv.autor.nome if mv.autor else '—' }}</td>
+          </tr>{% endfor %}</tbody>
+      </table></div>
+      {% else %}<div class="card-body text-muted small">Nenhuma movimentação.</div>{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

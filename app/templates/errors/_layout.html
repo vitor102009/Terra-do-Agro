@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block body %}
+<main class="error-page" id="conteudo">
+  <div class="inner">
+    <a class="brand justify-content-center mb-4" href="{{ url_for('main.index') }}">
+      <img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="48" height="48">
+      <span class="text-start"><span class="brand-name d-block">TERRA <span>DO</span> AGRO</span><span class="brand-slogan d-block">A revolução digital do agro brasileiro</span></span>
+    </a>
+    <div class="code" aria-hidden="true">{% block code %}{% endblock %}</div>
+    <h1>{% block heading %}{% endblock %}</h1>
+    <p>{% block message %}{% endblock %}</p>
+    <div class="d-flex flex-wrap justify-content-center gap-2">
+      <a class="btn btn-gold btn-lg" href="{{ url_for('main.index') }}"><i class="bi bi-house-door" aria-hidden="true"></i>Voltar ao início</a>
+      <button class="btn btn-light-ghost btn-lg" type="button" data-action="back"><i class="bi bi-arrow-left" aria-hidden="true"></i>Voltar à página anterior</button>
+    </div>
+    {% if support_email %}
+    <p class="mt-4 small">Precisa de ajuda? Fale com o suporte: <a class="text-gold" href="mailto:{{ support_email }}">{{ support_email }}</a></p>
+    {% elif current_user.is_authenticated %}
+    <p class="mt-4 small">Precisa de ajuda? <a class="text-gold" href="{{ url_for('conta.suporte') }}">Abra um chamado de suporte</a>.</p>
+    {% endif %}
+  </div>
+  <img class="art" src="{{ url_for('static', filename='img/campo.svg') }}" alt="" aria-hidden="true">
+</main>
+{% endblock %}

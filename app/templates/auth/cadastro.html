@@ -1,0 +1,25 @@
+{% extends "layouts/auth.html" %}
+{% block title %}Criar conta{% endblock %}
+{% block auth %}
+<h1 class="mb-1">Criar conta</h1>
+<p class="text-muted mb-4">Uma conta única para gestão, mercado, serviços e comunidade.</p>
+{{ m.form_errors() }}
+<form method="post" novalidate data-loading>
+  {{ m.csrf() }}
+  <div class="row g-3">
+    {{ m.input('nome', 'Nome completo', required=True, attrs='autocomplete="name" autofocus') }}
+    {{ m.input('email', 'E-mail', type='email', required=True, attrs='autocomplete="email"') }}
+    {{ m.input('senha', 'Senha', type='password', required=True, help='Mínimo de 8 caracteres, com letras e números.', col='col-12 col-sm-6', attrs='autocomplete="new-password"', value='') }}
+    {{ m.input('confirmar', 'Confirmar senha', type='password', required=True, col='col-12 col-sm-6', attrs='autocomplete="new-password"', value='') }}
+    <div class="col-12">
+      <div class="form-check">
+        <input class="form-check-input{% if e and e.get('aceite') %} is-invalid{% endif %}" type="checkbox" value="1" id="f-aceite" name="aceite" {% if v and v.get('aceite') %}checked{% endif %}>
+        <label class="form-check-label" for="f-aceite">Li e aceito os <a href="{{ url_for('main.termos') }}" target="_blank" rel="noopener">termos de uso</a> e a <a href="{{ url_for('main.privacidade') }}" target="_blank" rel="noopener">política de privacidade</a>.</label>
+      </div>
+      {% if e and e.get('aceite') %}<div class="invalid-feedback d-block">{{ e.get('aceite') }}</div>{% endif %}
+    </div>
+    <div class="col-12"><button class="btn btn-primary w-100 btn-lg" type="submit">Criar conta</button></div>
+  </div>
+</form>
+<p class="text-center mt-4 mb-0">Já tem conta? <a class="fw-semibold" href="{{ url_for('auth.login') }}">Entrar</a></p>
+{% endblock %}

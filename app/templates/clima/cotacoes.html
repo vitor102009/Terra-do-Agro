@@ -1,0 +1,35 @@
+{% extends "layouts/app.html" %}
+{% block title %}Cotações{% endblock %}
+{% block content %}
+{% call m.page_head('Cotações agropecuárias', 'Valores de referência registrados a partir de fontes identificadas, com data de referência.') %}
+  {% if current_user.is_admin %}<a class="btn btn-primary" href="{{ url_for('admin.cotacoes') }}"><i class="bi bi-plus-lg" aria-hidden="true"></i>Registrar cotações</a>{% endif %}
+{% endcall %}
+<div class="notice mb-3">O Terra do Agro não gera cotações. Cada valor mostra a fonte e a data de referência informadas no cadastro. Confirme na fonte original antes de negociar.</div>
+{% if recentes %}
+<div class="card mb-3">
+  <div class="table-responsive"><table class="table table-hover align-middle table-responsive-cards">
+    <thead><tr><th>Produto</th><th>Praça</th><th class="num">Valor</th><th>Unidade</th><th>Data de referência</th><th>Fonte</th></tr></thead>
+    <tbody>{% for c in recentes %}<tr>
+      <td data-label="Produto"><a class="fw-semibold" href="{{ url_for('clima.cotacoes', produto=c.produto) }}">{{ c.produto }}</a></td>
+      <td data-label="Praça">{{ c.praca }}{% if c.uf %}/{{ c.uf }}{% endif %}</td>
+      <td class="num fw-semibold" data-label="Valor">{{ c.valor|moeda }}</td>
+      <td data-label="Unidade">{{ c.unidade }}</td>
+      <td data-label="Data">{{ c.data_referencia|data_br }}</td>
+      <td data-label="Fonte">{% if c.fonte_url %}<a href="{{ c.fonte_url }}" target="_blank" rel="noopener noreferrer">{{ c.fonte }}</a>{% else %}{{ c.fonte }}{% endif %}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+{% if produto %}
+<div class="card"><div class="card-header"><h2>Histórico: {{ produto }}</h2></div><div class="card-body">
+  {% if grafico %}<div class="chart-box"><canvas role="img" aria-label="Histórico de cotações de {{ produto }}" data-chart='{{ grafico|tojson }}'></canvas></div>
+  {% else %}<p class="text-muted small mb-0">São necessários ao menos dois registros para o gráfico.</p>{% endif %}
+</div></div>
+{% endif %}
+{% else %}
+<div class="card">{{ m.empty('bi-graph-up-arrow', 'Nenhuma cotação registrada', 'As cotações (arroba do boi, leite, milho, soja e outras) aparecem aqui quando o administrador as registra a partir de uma fonte confiável, como boletins do CEPEA/ESALQ, cooperativas ou bolsas.') }}</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+{% endblock %}

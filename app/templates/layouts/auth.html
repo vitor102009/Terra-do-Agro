@@ -1,0 +1,30 @@
+{% extends "layouts/public.html" %}
+{% block public %}
+<div class="auth-wrap">
+  <section class="auth-side" aria-label="Apresentação">
+    <a class="brand brand-lg" href="{{ url_for('main.index') }}">
+      <img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="64" height="64">
+      <span><span class="brand-name d-block">TERRA <span>DO</span> AGRO</span><span class="brand-slogan d-block">A revolução digital do agro brasileiro</span></span>
+    </a>
+    <div style="position: relative; z-index: 1">
+      <h2>Gestão, mercado e comunidade do campo em um só lugar.</h2>
+      <div class="rule"></div>
+      <div class="auth-feature"><i class="bi bi-tags" aria-hidden="true"></i><span>Rebanho, pesagens, vacinas e reprodução organizados por propriedade.</span></div>
+      <div class="auth-feature"><i class="bi bi-cash-coin" aria-hidden="true"></i><span>Receitas, despesas, fluxo de caixa e custo de produção com os seus números.</span></div>
+      <div class="auth-feature"><i class="bi bi-person-badge" aria-hidden="true"></i><span>Contrate veterinários, agrônomos, técnicos e prestadores de serviço.</span></div>
+      <div class="auth-feature"><i class="bi bi-wifi-off" aria-hidden="true"></i><span>Instale como aplicativo e registre pesagens e vacinas mesmo sem sinal.</span></div>
+    </div>
+    <small class="text-white-50" style="position: relative; z-index: 1">© Terra do Agro</small>
+    <img class="fields-art" src="{{ url_for('static', filename='img/campo.svg') }}" alt="" aria-hidden="true">
+  </section>
+  <main class="auth-main" id="conteudo">
+    <div class="auth-card">
+      <a class="brand mb-4 d-lg-none" href="{{ url_for('main.index') }}" style="color: var(--ta-black)">
+        <img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="44" height="44">
+        <span><span class="brand-name d-block">TERRA <span>DO</span> AGRO</span><span class="brand-slogan d-block">A revolução digital do agro brasileiro</span></span>
+      </a>
+      {% block auth %}{% endblock %}
+    </div>
+  </main>
+</div>
+{% endblock %}

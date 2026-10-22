@@ -1,0 +1,57 @@
+{% extends "layouts/app.html" %}
+{% block title %}Profissionais do Agro{% endblock %}
+{% block content %}
+{% call m.page_head('Profissionais do Agro', 'Veterinários, agrônomos, zootecnistas, técnicos, prestadores de serviço e trabalhadores do campo.') %}
+  <a class="btn btn-outline-primary" href="{{ url_for('profissionais.empresas') }}"><i class="bi bi-shop" aria-hidden="true"></i>Empresas e lojas</a>
+  <a class="btn btn-outline-primary" href="{{ url_for('vagas.trabalhadores') }}"><i class="bi bi-person-workspace" aria-hidden="true"></i>Trabalhadores</a>
+  <a class="btn btn-primary" href="{{ url_for('profissionais.meus') }}"><i class="bi bi-person-badge" aria-hidden="true"></i>Meu perfil profissional</a>
+{% endcall %}
+<div class="chips-scroll mb-3">
+  <a class="cat-chip {% if not args.get('grupo') %}active{% endif %}" href="{{ url_for('profissionais.index') }}">Todos</a>
+  {% for k, r in grupos.items() %}<a class="cat-chip {% if args.get('grupo') == k %}active{% endif %}" href="{{ url_for('profissionais.index', grupo=k) }}">{{ r }}</a>{% endfor %}
+</div>
+<form class="filters" method="get">
+  {% if args.get('grupo') %}<input type="hidden" name="grupo" value="{{ args.get('grupo') }}">{% endif %}
+  <div class="row g-2 align-items-end">
+    <div class="col-12 col-md-3"><label class="form-label" for="q">Especialidade ou nome</label><input class="form-control" id="q" name="q" value="{{ args.get('q', '') }}" placeholder="Ex.: reprodução, solo, nutrição"></div>
+    <div class="col-6 col-md-3"><label class="form-label" for="categoria">Profissão</label><select class="form-select" id="categoria" name="categoria"><option value="">Todas</option>{% for c in categorias if not args.get('grupo') or c.grupo == args.get('grupo') %}<option value="{{ c.id }}" {% if args.get('categoria') == c.id|string %}selected{% endif %}>{{ c.nome }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-2"><label class="form-label" for="municipio">Município / região</label><input class="form-control" id="municipio" name="municipio" value="{{ args.get('municipio', '') }}"></div>
+    <div class="col-6 col-md-1"><label class="form-label" for="uf">UF</label><select class="form-select" id="uf" name="uf"><option value="">—</option>{% for u in ufs %}<option {% if args.get('uf') == u %}selected{% endif %}>{{ u }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-3"><label class="form-label" for="modalidade">Atendimento</label><select class="form-select" id="modalidade" name="modalidade"><option value="">Qualquer</option>{% for k, r in modalidades.items() %}<option value="{{ k }}" {% if args.get('modalidade') == k %}selected{% endif %}>{{ r }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-2"><label class="form-label" for="preco_max">Preço a partir de até (R$)</label><input class="form-control" id="preco_max" name="preco_max" inputmode="decimal" value="{{ args.get('preco_max', '') }}"></div>
+    <div class="col-6 col-md-2"><label class="form-label" for="nota_min">Avaliação mínima</label><select class="form-select" id="nota_min" name="nota_min"><option value="">Qualquer</option>{% for n in [3, 4, 5] %}<option value="{{ n }}" {% if args.get('nota_min') == n|string %}selected{% endif %}>{{ n }}+ estrelas</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-2"><label class="form-label" for="ordem">Ordenar</label><select class="form-select" id="ordem" name="ordem"><option value="">Verificados primeiro</option><option value="nota" {% if args.get('ordem') == 'nota' %}selected{% endif %}>Melhor avaliados</option><option value="recentes" {% if args.get('ordem') == 'recentes' %}selected{% endif %}>Mais recentes</option></select></div>
+    <div class="col-6 col-md-2"><div class="form-check"><input class="form-check-input" type="checkbox" id="disponivel" name="disponivel" value="1" {% if args.get('disponivel') == '1' %}checked{% endif %}><label class="form-check-label small" for="disponivel">Disponível agora</label></div>
+      <div class="form-check"><input class="form-check-input" type="checkbox" id="verificado" name="verificado" value="1" {% if args.get('verificado') == '1' %}checked{% endif %}><label class="form-check-label small" for="verificado">Somente verificados</label></div></div>
+    <div class="col-6 col-md-2"><button class="btn btn-primary w-100" type="submit">Buscar</button></div>
+  </div>
+</form>
+<div class="row g-3">
+  {% for p in pag.items %}
+  <div class="col-md-6 col-xl-4">
+    <div class="card listing-card"><div class="card-body">
+      <div class="d-flex gap-3 align-items-start">
+        {{ m.avatar(p.user, 'avatar-gold') }}
+        <div class="min-w-0 flex-grow-1">
+          <h2 class="h6 mb-0"><a class="text-reset stretched-link" href="{{ url_for('profissionais.perfil', perfil_id=p.id) }}">{{ p.user.nome }}</a></h2>
+          <div class="small text-muted">{{ p.categoria.nome }}</div>
+        </div>
+        {% if p.verificado %}<span class="badge badge-verified" title="Registro conferido pela equipe"><i class="bi bi-patch-check" aria-hidden="true"></i> Verificado</span>{% endif %}
+      </div>
+      <p class="fw-semibold mt-3 mb-1">{{ p.titulo }}</p>
+      {% if p.lista_especialidades %}<div class="d-flex flex-wrap gap-1 mb-2">{% for esp in p.lista_especialidades[:4] %}<span class="badge badge-soft-green">{{ esp }}</span>{% endfor %}</div>{% endif %}
+      <div class="meta"><i class="bi bi-geo-alt" aria-hidden="true"></i> {{ p.municipio }}/{{ p.uf }}{% if p.raio_km %} · até {{ p.raio_km }} km{% endif %}</div>
+      <div class="meta">{{ p.lista_modalidades|rotulos(modalidades)|join(' · ') }}</div>
+      <div class="d-flex justify-content-between align-items-center mt-2">
+        <span class="small">{% if p.total_avaliacoes %}{{ m.stars(p.nota_media) }} <span class="text-muted">({{ p.total_avaliacoes }})</span>{% else %}<span class="text-muted">Sem avaliações</span>{% endif %}</span>
+        <span class="small {{ 'text-success' if p.disponivel else 'text-muted' }}">{{ 'Disponível' if p.disponivel else 'Indisponível' }}</span>
+      </div>
+    </div></div>
+  </div>
+  {% else %}
+  <div class="col-12"><div class="card">{{ m.empty('bi-person-badge', 'Nenhum profissional encontrado', 'Ajuste os filtros. Se você é profissional, crie seu perfil para aparecer aqui.', url_for('profissionais.editar_perfil'), 'Criar perfil profissional') }}</div></div>
+  {% endfor %}
+</div>
+{{ m.pagination(pag, 'profissionais.index') }}
+<p class="small text-muted mt-3">O selo "Verificado" indica que a equipe do Terra do Agro conferiu o registro profissional informado. Avaliações só podem ser feitas após contratações concluídas na plataforma.</p>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "layouts/app.html" %}
+{% block title %}Propriedades{% endblock %}
+{% block content %}
+{% call m.page_head('Propriedades', 'Cada propriedade tem seus próprios animais, lotes, estoque, financeiro e relatórios.') %}
+  <a class="btn btn-primary" href="{{ url_for('propriedades.nova') }}"><i class="bi bi-plus-lg" aria-hidden="true"></i>Nova propriedade</a>
+{% endcall %}
+{% if membros %}
+<div class="row g-3">
+  {% for mb in membros %}{% set p = mb.propriedade %}
+  <div class="col-md-6 col-xl-4">
+    <div class="card h-100{% if p.arquivada %} opacity-75{% endif %}">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <div>
+            <h2 class="h5 mb-1"><a class="text-reset" href="{{ url_for('propriedades.detalhe', pid=p.id) }}">{{ p.nome }}</a></h2>
+            <div class="text-muted small">{{ p.municipio }}/{{ p.uf }} · {{ p.atividade_label }}</div>
+          </div>
+          {% if p.arquivada %}<span class="badge badge-soft-gray">Arquivada</span>
+          {% elif propriedade_atual and p.id == propriedade_atual.id %}<span class="badge badge-soft-gold">Ativa</span>{% endif %}
+        </div>
+        <dl class="dl-grid mt-3">
+          <div><dt>Área total</dt><dd>{{ (p.area_total_ha|numero(2) ~ ' ha') if p.area_total_ha is not none else '—' }}</dd></div>
+          <div><dt>Seu acesso</dt><dd>{{ mb.papel_label }}</dd></div>
+        </dl>
+      </div>
+      {% if not p.arquivada %}
+      <div class="card-footer bg-transparent d-flex flex-wrap gap-2">
+        {% if not (propriedade_atual and p.id == propriedade_atual.id) %}
+        <form method="post" action="{{ url_for('propriedades.ativar', pid=p.id) }}">{{ m.csrf() }}<input type="hidden" name="next" value="{{ url_for('main.dashboard') }}"><button class="btn btn-sm btn-primary" type="submit">Tornar ativa</button></form>
+        {% endif %}
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('propriedades.detalhe', pid=p.id) }}">Detalhes</a>
+        {% if 'membros' in mb.perms %}<a class="btn btn-sm btn-outline-primary" href="{{ url_for('propriedades.membros', pid=p.id) }}">Acessos</a>{% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">{{ m.empty('bi-house-door', 'Nenhuma propriedade cadastrada', 'Cadastre sua primeira propriedade para começar a registrar animais, lotes e finanças.', url_for('propriedades.nova'), 'Cadastrar propriedade') }}</div>
+{% endif %}
+{% endblock %}

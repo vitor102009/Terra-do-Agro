@@ -1,0 +1,51 @@
+{% extends "layouts/app.html" %}
+{% block title %}Minha conta{% endblock %}
+{% block content %}
+{{ m.page_head('Minha conta', current_user.email) }}
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card mb-3"><div class="card-header"><h2>Dados pessoais</h2></div><div class="card-body">
+      {{ m.form_errors() }}
+      <form method="post" enctype="multipart/form-data" novalidate>{{ m.csrf() }}<input type="hidden" name="acao" value="dados">
+        <div class="d-flex align-items-center gap-3 mb-3">{{ m.avatar(current_user, 'avatar-lg') }}{{ m.file('foto', 'Fotografia de perfil', accept='image/jpeg,image/png,image/webp', col='flex-grow-1', help='Exibida publicamente no seu perfil. JPG, PNG ou WEBP até 5 MB.') }}</div>
+        <div class="row g-3">
+          {{ m.input('nome', 'Nome completo', required=True, col='col-md-6') }}
+          {{ m.input('telefone', 'Telefone', col='col-md-6', help='Privado. Não é exibido em páginas públicas.') }}
+          {{ m.input('municipio', 'Município', col='col-md-8') }}
+          {{ m.uf(required=False, col='col-md-4') }}
+          {{ m.textarea('bio', 'Apresentação', rows=2) }}
+          <div class="col-12"><button class="btn btn-primary" type="submit">Salvar dados</button>
+            <a class="btn btn-outline-primary ms-1" href="{{ url_for('conta.senha') }}">Alterar senha</a></div>
+        </div>
+      </form>
+    </div></div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card mb-3"><div class="card-header"><h2>Como você atua</h2></div><div class="card-body">
+      <p class="small text-muted">Amplie seu perfil sem criar outra conta.</p>
+      <form method="post">{{ m.csrf() }}<input type="hidden" name="acao" value="papeis">
+        {% for k, r in papeis.items() %}
+        <div class="form-check"><input class="form-check-input" type="checkbox" name="papeis" value="{{ k }}" id="papel-{{ k }}" {% if current_user.has_role(k) %}checked disabled{% endif %}><label class="form-check-label" for="papel-{{ k }}">{{ r }}</label></div>
+        {% endfor %}
+        <button class="btn btn-sm btn-outline-primary mt-2" type="submit">Adicionar selecionados</button>
+      </form>
+      <hr>
+      <div class="list-group list-group-flush small">
+        <a class="list-group-item list-group-item-action px-0" href="{{ url_for('propriedades.index') }}">Propriedades ({{ contagens.propriedades }})</a>
+        <a class="list-group-item list-group-item-action px-0" href="{{ url_for('profissionais.meus') }}">Perfis profissionais ({{ contagens.profissional }})</a>
+        <a class="list-group-item list-group-item-action px-0" href="{{ url_for('vagas.meu_perfil') }}">Perfil de trabalhador {{ '(criado)' if contagens.trabalhador else '' }}</a>
+        <a class="list-group-item list-group-item-action px-0" href="{{ url_for('conta.empresa') }}">Perfil de empresa {{ '(criado)' if contagens.empresa else '' }}</a>
+      </div>
+    </div></div>
+    <div class="card"><div class="card-header"><h2>Privacidade e seus dados</h2></div><div class="card-body small">
+      <p>Você pode baixar uma cópia dos seus dados pessoais, pedir correção ou solicitar a exclusão da conta, conforme a LGPD. Registros exigidos por obrigação legal podem ser mantidos pelo prazo necessário.</p>
+      <div class="d-grid gap-2">
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('conta.exportar_dados') }}"><i class="bi bi-download" aria-hidden="true"></i>Baixar meus dados (JSON)</a>
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('conta.suporte', tipo='lgpd_correcao') }}">Solicitar correção de dados</a>
+        <a class="btn btn-sm btn-outline-danger" href="{{ url_for('conta.suporte', tipo='lgpd_exclusao') }}">Solicitar exclusão da conta</a>
+        <a class="btn btn-sm btn-link" href="{{ url_for('main.privacidade') }}">Política de privacidade</a>
+      </div>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "layouts/app.html" %}
+{% block title %}Serviços · {{ p.titulo }}{% endblock %}
+{% block content %}
+{{ m.page_head('Serviços oferecidos', p.categoria.nome ~ ' · ' ~ p.titulo, back=url_for('profissionais.perfil', perfil_id=p.id)) }}
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card">
+      {% if p.servicos %}
+      <ul class="list-group list-group-flush">{% for s in p.servicos %}
+        <li class="list-group-item d-flex justify-content-between gap-3">
+          <div><span class="fw-semibold">{{ s.nome }}</span> <span class="small text-muted">{{ s.preco_info or 'Sob orçamento' }}</span>{% if s.descricao %}<div class="small text-muted text-pre">{{ s.descricao }}</div>{% endif %}</div>
+          <form method="post" data-confirm="Remover o serviço {{ s.nome }}?">{{ m.csrf() }}<button class="btn btn-sm btn-outline-danger" name="remover" value="{{ s.id }}" type="submit">Remover</button></form>
+        </li>{% endfor %}</ul>
+      {% else %}{{ m.empty('bi-list-check', 'Nenhum serviço cadastrado', 'Liste os serviços que você presta para facilitar a contratação.') }}{% endif %}
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card"><div class="card-header"><h2>Adicionar serviço</h2></div><div class="card-body">
+      {{ m.form_errors() }}
+      <form method="post" novalidate>{{ m.csrf() }}
+        <div class="row g-3">
+          {{ m.input('nome', 'Serviço', required=True, placeholder='Ex.: Diagnóstico de gestação por ultrassom') }}
+          {{ m.input('preco_info', 'Preço / condição', placeholder='Ex.: R$ 15 por animal, mínimo 20') }}
+          {{ m.textarea('descricao', 'Descrição', rows=3) }}
+          <div class="col-12"><button class="btn btn-primary w-100" type="submit">Adicionar</button></div>
+        </div>
+      </form>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

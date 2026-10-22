@@ -1,0 +1,32 @@
+{% extends "layouts/app.html" %}
+{% block title %}{{ 'Editar vaga' if vaga else 'Publicar vaga' }}{% endblock %}
+{% block content %}
+{{ m.page_head('Editar vaga' if vaga else 'Publicar vaga de emprego', 'Para serviços autônomos por orçamento, use o Marketplace ou Profissionais do Agro.', back=url_for('vagas.detalhe', vid=vaga.id) if vaga else url_for('vagas.index')) }}
+<div class="card" style="max-width: 1000px"><div class="card-body">
+  {{ m.form_errors() }}
+  <form method="post" novalidate>{{ m.csrf() }}
+    <div class="row g-3">
+      {{ m.input('cargo', 'Cargo', required=True, col='col-md-6', placeholder='Ex.: Vaqueiro, tratorista, ordenhador') }}
+      {{ m.select('categoria', 'Área de trabalho', categorias, required=True, col='col-md-6') }}
+      {{ m.input('empregador', 'Empregador (propriedade ou empresa)', required=True, col='col-md-6') }}
+      {{ m.select('tipo_contratacao', 'Tipo de contratação', tipos, required=True, col='col-md-6', empty=None) }}
+      {{ m.textarea('descricao', 'Descrição da vaga', required=True, rows=4) }}
+      {{ m.textarea('atividades', 'Atividades', rows=3, col='col-md-6') }}
+      {{ m.textarea('requisitos', 'Requisitos', rows=3, col='col-md-6') }}
+      {{ m.input('experiencia', 'Experiência desejada', col='col-md-6') }}
+      {{ m.input('jornada', 'Jornada', col='col-md-6', placeholder='Ex.: 44h semanais, escala 6x1') }}
+      {{ m.money('salario_min', 'Salário a partir de (R$)', col='col-md-3') }}
+      {{ m.money('salario_max', 'Salário até (R$)', col='col-md-3') }}
+      {{ m.textarea('beneficios', 'Benefícios', rows=2, col='col-md-6', placeholder='Ex.: moradia, alimentação, transporte') }}
+      {{ m.input('municipio', 'Município do trabalho', required=True, col='col-md-5') }}
+      {{ m.uf(col='col-md-2') }}
+      {{ m.input('prazo', 'Inscrições até', type='date', col='col-md-5') }}
+      {{ m.textarea('forma_candidatura', 'Como se candidatar / observações', rows=2, help='As candidaturas pela plataforma ficam disponíveis para você na página da vaga.') }}
+    </div>
+    <div class="form-actions">
+      <a class="btn btn-outline-secondary" href="{{ url_for('vagas.index') }}">Cancelar</a>
+      <button class="btn btn-primary" type="submit">{{ 'Salvar' if vaga else 'Publicar' }}</button>
+    </div>
+  </form>
+</div></div>
+{% endblock %}

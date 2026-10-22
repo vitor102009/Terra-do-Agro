@@ -1,0 +1,39 @@
+{% extends "layouts/app.html" %}
+{% block title %}Clima{% endblock %}
+{% block content %}
+{{ m.page_head('Clima e previsão do tempo', (p.local if p.ok else 'Previsão para a propriedade ativa ou o município do seu perfil')) }}
+{% if not p.ok %}
+<div class="card"><div class="card-body">{{ m.empty('bi-cloud-slash', 'Previsão indisponível', p.mensagem) }}</div></div>
+{% else %}
+{% if p.cache_antigo %}<div class="notice mb-3">Sem conexão com o serviço de previsão. Exibindo o último dado válido, obtido em {{ p.atualizado_em }}.</div>{% endif %}
+<div class="row g-3 mb-3">
+  <div class="col-lg-5"><div class="card h-100"><div class="card-body">
+    <div class="weather-now"><i class="bi {{ p.atual.icone }}" aria-hidden="true"></i><div><div class="temp">{{ p.atual.temperatura|round|int }}°C</div><div class="text-muted">{{ p.atual.descricao }}</div></div></div>
+    <dl class="dl-grid mt-3">
+      <div><dt>Umidade relativa</dt><dd>{{ p.atual.umidade }}%</dd></div>
+      <div><dt>Vento</dt><dd>{{ p.atual.vento|round|int }} km/h</dd></div>
+      <div><dt>Precipitação agora</dt><dd>{{ p.atual.precipitacao|numero(1) }} mm</dd></div>
+    </dl>
+  </div></div></div>
+  <div class="col-lg-7"><div class="card h-100"><div class="card-header"><h2>Chuva prevista (mm)</h2></div><div class="card-body">
+    <div class="chart-box sm"><canvas role="img" aria-label="Precipitação prevista por dia" data-chart='{{ {"type": "bar", "unit": "mm", "labels": p.dias|map(attribute="rotulo")|list, "datasets": [{"label": "Chuva (mm)", "data": p.dias|map(attribute="chuva_mm")|list, "color": "#1D5F8C"}]}|tojson }}'></canvas></div>
+  </div></div></div>
+</div>
+<div class="forecast mb-3">
+  {% for d in p.dias %}
+  <div class="day">
+    <div class="small fw-semibold">{{ d.rotulo }}</div>
+    <i class="bi {{ d.icone }}" aria-hidden="true"></i>
+    <div class="small text-muted">{{ d.descricao }}</div>
+    <div class="fw-semibold">{{ d.max|round|int }}° <span class="text-muted fw-normal">/ {{ d.min|round|int }}°</span></div>
+    <div class="small">{{ d.chuva_mm|numero(1) }} mm{% if d.prob is not none %} · {{ d.prob }}%{% endif %}</div>
+  </div>
+  {% endfor %}
+</div>
+<p class="small text-muted">Fonte: {{ p.fonte }} · Atualizado em {{ p.atualizado_em }}. Previsões são estimativas do serviço meteorológico e podem mudar.</p>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+{% endblock %}

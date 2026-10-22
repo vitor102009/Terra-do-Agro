@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block body %}
+{% with mensagens = get_flashed_messages(with_categories=true) %}
+  {% if mensagens %}
+  <div class="toast-area" style="top: 16px" aria-live="polite">
+    {% for cat, msg in mensagens %}
+    <div class="alert alert-{{ {'error': 'danger', 'message': 'info'}.get(cat, cat) }} alert-dismissible shadow-sm fade show" role="{{ 'alert' if cat in ('error', 'danger') else 'status' }}">
+      {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endwith %}
+{% block public %}{% endblock %}
+{% endblock %}

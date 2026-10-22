@@ -1,0 +1,55 @@
+{# Publicação do feed. Espera `p` e `curtidos`. #}
+<article class="card post{% if p.tipo == 'comercial' %} post-commercial{% endif %}" id="post-{{ p.id }}">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-start gap-2">
+      <div class="author">
+        {{ m.avatar(p.autor) }}
+        <div>
+          <a class="fw-semibold text-reset" href="{{ url_for('feed.usuario', uid=p.autor.id) }}">{{ p.autor.nome }}</a>
+          <div class="small text-muted"><a class="text-reset" href="{{ url_for('feed.post', pid=p.id) }}">{{ p.created_at|tempo_relativo }}</a>{% if p.editado %} · editada{% endif %}{% if p.grupo and not grupo %} · em <a href="{{ url_for('comunidade.grupo', gid=p.grupo.id) }}">{{ p.grupo.nome }}</a>{% endif %}</div>
+        </div>
+      </div>
+      <div class="d-flex align-items-center gap-1">
+        {% if p.tipo == 'comercial' %}<span class="badge badge-soft-gold">Publicidade</span>{% elif p.tipo != 'geral' %}<span class="badge badge-soft-green">{{ p.tipo_label }}</span>{% endif %}
+        <div class="dropdown">
+          <button class="btn btn-sm btn-icon" data-bs-toggle="dropdown" aria-label="Opções da publicação"><i class="bi bi-three-dots" aria-hidden="true"></i></button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            {% if p.autor_id == current_user.id %}<li><a class="dropdown-item" href="{{ url_for('feed.editar', pid=p.id) }}">Editar</a></li>{% endif %}
+            {% if p.autor_id == current_user.id or pode_moderar_post(p) %}<li><form method="post" action="{{ url_for('feed.excluir', pid=p.id) }}" data-confirm="Remover esta publicação?">{{ m.csrf() }}<input type="hidden" name="next" value="{{ request.path }}"><button class="dropdown-item text-danger" type="submit">Remover</button></form></li>{% endif %}
+            {% if p.autor_id != current_user.id %}<li><a class="dropdown-item" href="{{ url_for('main.denunciar', tipo='post', alvo_id=p.id, next=request.full_path) }}">Denunciar</a></li>{% endif %}
+          </ul>
+        </div>
+      </div>
+    </div>
+    {% if p.texto %}<p class="mt-3 mb-2 text-pre">{{ p.texto }}</p>{% endif %}
+    {% if p.tipo == 'comercial' %}<p class="small text-muted mb-2">Conteúdo comercial do autor. Não é recomendação técnica verificada pela plataforma.</p>{% endif %}
+    {% if p.midia %}
+    <div class="media mt-2">
+      {% if p.midia_tipo == 'video' %}<video controls preload="metadata" src="{{ url_for('main.media', caminho=p.midia) }}"></video>
+      {% else %}<img src="{{ url_for('main.media', caminho=p.midia) }}" alt="Imagem publicada por {{ p.autor.nome }}" loading="lazy">{% endif %}
+    </div>
+    {% endif %}
+    {% if p.compartilhado %}
+    <div class="shared-post">
+      {% if p.compartilhado.removido %}<span class="small text-muted">A publicação original foi removida.</span>
+      {% else %}<div class="small fw-semibold">{{ p.compartilhado.autor.nome }}</div>{% if p.compartilhado.texto %}<div class="small text-pre">{{ p.compartilhado.texto|truncate(400) }}</div>{% endif %}
+        {% if p.compartilhado.midia and p.compartilhado.midia_tipo == 'imagem' %}<img class="mt-2 rounded" style="max-height: 220px; max-width: 100%" src="{{ url_for('main.media', caminho=p.compartilhado.midia) }}" alt="" loading="lazy">{% endif %}
+        <a class="small d-block mt-1" href="{{ url_for('feed.post', pid=p.compartilhado.id) }}">Ver publicação original</a>{% endif %}
+    </div>
+    {% endif %}
+    {% set n_reac = p.reacoes|length %}{% set comentarios = p.comentarios|rejectattr('removido')|list %}
+    <div class="actions">
+      <form method="post" action="{{ url_for('feed.reagir', pid=p.id) }}">{{ m.csrf() }}<input type="hidden" name="next" value="{{ request.full_path }}#post-{{ p.id }}">
+        <button class="btn btn-sm {{ 'liked' if p.id in curtidos }}" type="submit" aria-pressed="{{ 'true' if p.id in curtidos else 'false' }}"><i class="bi {{ 'bi-hand-thumbs-up-fill' if p.id in curtidos else 'bi-hand-thumbs-up' }}" aria-hidden="true"></i>Curtir{% if n_reac %} · {{ n_reac }}{% endif %}</button></form>
+      <a class="btn btn-sm" href="{{ url_for('feed.post', pid=p.id) }}#comentar"><i class="bi bi-chat" aria-hidden="true"></i>Comentar{% if comentarios %} · {{ comentarios|length }}{% endif %}</a>
+      {% if not p.grupo_id %}<form method="post" action="{{ url_for('feed.compartilhar', pid=p.id) }}" data-confirm="Compartilhar esta publicação no seu feed?">{{ m.csrf() }}<button class="btn btn-sm" type="submit"><i class="bi bi-share" aria-hidden="true"></i>Compartilhar</button></form>{% endif %}
+    </div>
+    {% if comentarios %}
+    <div class="mt-2">
+      {% for c in comentarios[-3:] if not detalhe is defined %}{% include "feed/_comentario.html" %}{% endfor %}
+      {% if detalhe is defined %}{% for c in comentarios %}{% include "feed/_comentario.html" %}{% endfor %}{% endif %}
+      {% if not detalhe is defined and comentarios|length > 3 %}<a class="small" href="{{ url_for('feed.post', pid=p.id) }}">Ver todos os {{ comentarios|length }} comentários</a>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</article>

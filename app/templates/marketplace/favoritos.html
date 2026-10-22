@@ -1,0 +1,13 @@
+{% extends "layouts/app.html" %}
+{% block title %}Favoritos{% endblock %}
+{% block content %}
+{{ m.page_head('Anúncios favoritos', 'Acompanhe os anúncios que você salvou.', back=url_for('marketplace.index')) }}
+<div class="row g-3">
+  {% for f in favs %}{% set an = f.anuncio %}
+  <div class="col-6 col-md-4 col-xl-3">
+    {% include "marketplace/_card.html" %}
+    {% if an.status != 'ativo' %}<div class="small text-muted mt-1">Situação: {{ {'pausado': 'pausado', 'vendido': 'vendido / encerrado'}.get(an.status, an.status) }}</div>{% endif %}
+  </div>
+  {% else %}<div class="col-12"><div class="card">{{ m.empty('bi-heart', 'Nenhum favorito ainda', 'Use "Salvar nos favoritos" na página de um anúncio.') }}</div></div>{% endfor %}
+</div>
+{% endblock %}

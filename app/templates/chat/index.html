@@ -1,0 +1,64 @@
+{% extends "layouts/app.html" %}
+{% block title %}Mensagens{% endblock %}
+{% block content %}
+<h1 class="h4 mb-3">Mensagens</h1>
+<div class="chat-wrap{% if ativa %} has-active{% endif %}">
+  <nav class="chat-list" aria-label="Conversas">
+    {% for item in conversas %}
+    <a href="{{ url_for('chat.index', c=item.c.id) }}" class="{% if ativa and item.c.id == ativa.id %}active{% endif %}">
+      {{ m.avatar(item.outro) }}
+      <div class="min-w-0 flex-grow-1">
+        <div class="d-flex justify-content-between gap-2"><span class="fw-semibold text-truncate">{{ item.outro.nome }}</span><small class="text-muted text-nowrap">{{ item.ultima.created_at|tempo_relativo if item.ultima else '' }}</small></div>
+        <div class="d-flex justify-content-between gap-2"><span class="preview">{{ item.ultima.texto if item.ultima else 'Nova conversa' }}</span>{% if item.nao_lidas %}<span class="badge text-bg-warning">{{ item.nao_lidas }}</span>{% endif %}</div>
+      </div>
+    </a>
+    {% else %}
+    <div class="p-4 text-center text-muted small"><i class="bi bi-chat-dots fs-2 text-gold d-block mb-2" aria-hidden="true"></i>Nenhuma conversa ainda. Inicie uma a partir de um anúncio, perfil profissional ou vaga.</div>
+    {% endfor %}
+  </nav>
+  <section class="chat-main" aria-label="Conversa">
+    {% if ativa %}
+    <div class="chat-head">
+      <a class="btn btn-icon btn-sm d-lg-none" href="{{ url_for('chat.index') }}" aria-label="Voltar para conversas"><i class="bi bi-arrow-left" aria-hidden="true"></i></a>
+      {{ m.avatar(outro) }}
+      <div class="flex-grow-1 min-w-0"><div class="fw-semibold">{{ outro.nome }}</div><div class="small text-muted">{% if outro.municipio %}{{ outro.municipio }}/{{ outro.uf }}{% endif %}</div></div>
+      <div class="dropdown">
+        <button class="btn btn-icon btn-sm" data-bs-toggle="dropdown" aria-label="Opções da conversa"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><form method="post" action="{{ url_for('chat.bloquear', user_id=outro.id) }}" data-confirm="{{ 'Desbloquear' if bloqueio else 'Bloquear' }} {{ outro.nome }}?">{{ m.csrf() }}<button class="dropdown-item" type="submit"><i class="bi bi-slash-circle me-2" aria-hidden="true"></i>{{ 'Desbloquear usuário' if bloqueio else 'Bloquear usuário' }}</button></form></li>
+          <li><a class="dropdown-item" href="{{ url_for('main.denunciar', tipo='usuario', alvo_id=outro.id, next=request.full_path) }}"><i class="bi bi-flag me-2" aria-hidden="true"></i>Denunciar usuário</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="chat-msgs" id="chat-msgs" aria-live="polite" data-conversa="{{ ativa.id }}" data-poll-url="{{ url_for('chat.mensagens', cid=ativa.id) }}" data-send-url="{{ url_for('chat.enviar', cid=ativa.id) }}">
+      <script type="application/json" id="chat-inicial">{{ mensagens|tojson }}</script>
+      {% if not mensagens %}<div class="text-center text-muted small my-auto" data-vazio>Envie a primeira mensagem.</div>{% endif %}
+    </div>
+    {% if bloqueio or bloqueado_por_outro %}
+    <div class="p-3 border-top small text-muted text-center">{{ 'Você bloqueou este usuário.' if bloqueio else 'Não é possível enviar mensagens nesta conversa.' }}</div>
+    {% else %}
+    <form class="chat-form flex-column" id="chat-form" method="post" action="{{ url_for('chat.enviar', cid=ativa.id) }}" data-no-loading>
+      {{ m.csrf() }}
+      {% if compartilhar %}
+      <div class="small d-flex align-items-center gap-2" data-compartilhar>
+        <span class="badge badge-soft-gold">{{ compartilhar.tipo }}</span><span class="text-truncate">{{ compartilhar.titulo }}</span>
+        <input type="hidden" name="{{ compartilhar.campo }}" value="{{ compartilhar.id }}">
+        <button class="btn btn-sm btn-link text-muted ms-auto" type="button" data-remover-compartilhar aria-label="Não compartilhar"><i class="bi bi-x" aria-hidden="true"></i></button>
+      </div>
+      {% endif %}
+      <div class="d-flex gap-2">
+        <label class="visually-hidden" for="chat-texto">Mensagem</label>
+        <textarea class="form-control" id="chat-texto" name="texto" rows="1" maxlength="4000" placeholder="Escreva uma mensagem" required></textarea>
+        <input type="hidden" name="uuid" value="">
+        <button class="btn btn-primary btn-icon flex-shrink-0" type="submit" aria-label="Enviar"><i class="bi bi-send" aria-hidden="true"></i></button>
+      </div>
+    </form>
+    {% endif %}
+    {% else %}
+    <div class="d-flex flex-column align-items-center justify-content-center h-100 text-muted p-4 text-center"><i class="bi bi-chat-square-text fs-1 text-gold mb-2" aria-hidden="true"></i>Selecione uma conversa.</div>
+    {% endif %}
+  </section>
+</div>
+<p class="small text-muted mt-2">As mensagens são privadas entre os participantes. Atualização automática a cada poucos segundos enquanto a página estiver aberta.</p>
+{% endblock %}
+{% block scripts %}{% if ativa %}<script src="{{ url_for('static', filename='js/chat.js') }}"></script>{% endif %}{% endblock %}

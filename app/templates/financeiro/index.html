@@ -1,0 +1,51 @@
+{% extends "layouts/app.html" %}
+{% block title %}Financeiro{% endblock %}
+{% block content %}
+{% call m.page_head('Financeiro', propriedade_atual.nome) %}
+  <a class="btn btn-outline-primary" href="{{ url_for('financeiro.exportar', **args.to_dict()) }}"><i class="bi bi-download" aria-hidden="true"></i>CSV</a>
+  <a class="btn btn-outline-primary" href="{{ url_for('financeiro.novo', tipo='receita') }}"><i class="bi bi-arrow-down-circle" aria-hidden="true"></i>Receita</a>
+  <a class="btn btn-primary" href="{{ url_for('financeiro.novo', tipo='despesa') }}"><i class="bi bi-arrow-up-circle" aria-hidden="true"></i>Despesa</a>
+{% endcall %}
+{% include "financeiro/_nav.html" %}
+<div class="row g-3 mb-3">
+  <div class="col-6 col-xl-3"><div class="card kpi"><div class="label"><i class="bi bi-arrow-down-circle" aria-hidden="true"></i>Receitas (filtro)</div><div class="value value-pos">{{ tot_rec|moeda }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="card kpi kpi-danger"><div class="label"><i class="bi bi-arrow-up-circle" aria-hidden="true"></i>Despesas (filtro)</div><div class="value value-neg">{{ tot_desp|moeda }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="card kpi kpi-dark"><div class="label"><i class="bi bi-graph-up" aria-hidden="true"></i>Resultado</div><div class="value">{{ (tot_rec - tot_desp)|moeda }}</div><div class="hint">por competência</div></div></div>
+  <div class="col-6 col-xl-3"><div class="card kpi kpi-gold"><div class="label"><i class="bi bi-hourglass" aria-hidden="true"></i>Em aberto</div>
+    <div class="small mt-2"><a href="{{ url_for('financeiro.contas', tipo='pagar') }}">A pagar: <strong>{{ total_pagar|moeda }}</strong> ({{ n_pagar }})</a></div>
+    <div class="small"><a href="{{ url_for('financeiro.contas', tipo='receber') }}">A receber: <strong>{{ total_receber|moeda }}</strong> ({{ n_receber }})</a></div></div></div>
+</div>
+<form class="filters" method="get">
+  <div class="row g-2 align-items-end">
+    <div class="col-6 col-md-2"><label class="form-label" for="inicio">De</label><input class="form-control" type="date" id="inicio" name="inicio" value="{{ inicio.isoformat() if inicio else '' }}"></div>
+    <div class="col-6 col-md-2"><label class="form-label" for="fim">Até</label><input class="form-control" type="date" id="fim" name="fim" value="{{ fim.isoformat() if fim else '' }}"></div>
+    <div class="col-6 col-md-2"><label class="form-label" for="tipo">Tipo</label><select class="form-select" id="tipo" name="tipo"><option value="">Todos</option>{% for k, r in tipos.items() %}<option value="{{ k }}" {% if args.get('tipo') == k %}selected{% endif %}>{{ r }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-2"><label class="form-label" for="categoria">Categoria</label><select class="form-select" id="categoria" name="categoria"><option value="">Todas</option>{% for c in categorias %}<option value="{{ c.id }}" {% if args.get('categoria') == c.id|string %}selected{% endif %}>{{ c.nome }} ({{ tipos[c.tipo]|lower }})</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-2"><label class="form-label" for="situacao">Situação</label><select class="form-select" id="situacao" name="situacao"><option value="">Todas</option>{% for k, r in situacoes.items() if k != 'cancelado' %}<option value="{{ k }}" {% if args.get('situacao') == k %}selected{% endif %}>{{ r }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-2"><label class="form-label" for="q">Descrição</label><input class="form-control" id="q" name="q" value="{{ args.get('q', '') }}"></div>
+    <div class="col-6 col-md-3"><div class="form-check"><input class="form-check-input" type="checkbox" id="cancelados" name="cancelados" value="1" {% if args.get('cancelados') == '1' %}checked{% endif %}><label class="form-check-label small" for="cancelados">Mostrar cancelados</label></div></div>
+    <div class="col-6 col-md-2 ms-auto"><button class="btn btn-primary w-100" type="submit">Filtrar</button></div>
+  </div>
+</form>
+<div class="card">
+  {% if itens %}
+  <div class="table-responsive"><table class="table table-hover align-middle table-responsive-cards">
+    <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Vínculo</th><th>Situação</th><th class="num">Valor</th></tr></thead>
+    <tbody>{% for l in itens %}
+      <tr class="{{ 'text-decoration-line-through text-muted' if l.cancelado }}">
+        <td data-label="Data">{{ l.data|data_br }}</td>
+        <td data-label="Descrição"><a href="{{ url_for('financeiro.detalhe', lid=l.id) }}">{{ l.descricao }}</a>{% if l.contraparte %}<small class="d-block text-muted">{{ l.contraparte }}</small>{% endif %}</td>
+        <td data-label="Categoria">{{ l.categoria.nome }}</td>
+        <td data-label="Vínculo" class="small">{% if l.lote %}Lote {{ l.lote.nome }}{% endif %}{% if l.animal %} Animal {{ l.animal.identificacao }}{% endif %}{% if not l.lote and not l.animal %}—{% endif %}</td>
+        <td data-label="Situação">{{ m.situacao_badge(l.situacao, l.situacao_label) }}{% if l.vencimento and l.saldo > 0 and not l.cancelado %}<small class="d-block text-muted">vence {{ l.vencimento|data_br }}</small>{% endif %}</td>
+        <td class="num fw-semibold {{ 'value-pos' if l.tipo == 'receita' else 'value-neg' }}" data-label="Valor">{{ '+' if l.tipo == 'receita' else '−' }} {{ l.valor|moeda }}</td>
+      </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}{{ m.empty('bi-cash-coin', 'Nenhum lançamento no período', 'Registre receitas e despesas da propriedade.', url_for('financeiro.novo', tipo='despesa'), 'Lançar despesa') }}{% endif %}
+</div>
+{% if paginas > 1 %}
+<nav class="mt-3" aria-label="Paginação"><ul class="pagination pagination-sm justify-content-center">
+  {% for p in range(1, paginas + 1) %}{% set a = args.to_dict() %}{% set _ = a.update({'page': p}) %}<li class="page-item {% if p == pg %}active{% endif %}"><a class="page-link" href="{{ url_for('financeiro.index', **a) }}">{{ p }}</a></li>{% endfor %}
+</ul><p class="text-center small text-muted">{{ total }} lançamento(s)</p></nav>
+{% endif %}
+{% endblock %}
