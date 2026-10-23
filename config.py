@@ -76,6 +76,11 @@ class Config:
     LOG_DIR = os.path.join(INSTANCE_DIR, "logs")
     BACKUP_DIR = os.path.join(BASE_DIR, "backups")
 
+    AI_ENABLED = _bool("AI_ENABLED", False)
+    AI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+    AI_MODEL = os.environ.get("AI_MODEL", "gpt-4o-mini")
+    AI_TEMPERATURE = float(os.environ.get("AI_TEMPERATURE", "0.4"))
+
 
 class TestConfig(Config):
     TESTING = True
@@ -85,6 +90,7 @@ class TestConfig(Config):
     WTF_CSRF_ENABLED = False
     WEATHER_ENABLED = False
     MAIL_SERVER = ""
+    AI_ENABLED = False
 
 
 def resolve_secret_key(configured):
