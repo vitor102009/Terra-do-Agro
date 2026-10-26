@@ -133,21 +133,74 @@ class Configuracao(db.Model):
 
 
 class Cotacao(db.Model):
-    """Cotação registrada manualmente a partir de uma fonte identificada (nunca gerada pelo sistema)."""
+    """Cotação de uma fonte identificada: registrada pelo administrador (origem "manual") ou coletada
+    automaticamente de uma fonte oficial (ex.: "bcb"). Nunca é gerada pelo sistema."""
 
     __tablename__ = "cotacoes"
+    __table_args__ = (db.UniqueConstraint("serie", "ref_externa", name="uq_cotacoes_serie_ref"),)
 
     id = db.Column(db.Integer, primary_key=True)
     produto = db.Column(db.String(80), nullable=False, index=True)
     praca = db.Column(db.String(120), nullable=False)
     uf = db.Column(db.String(2))
-    valor = db.Column(db.Numeric(14, 2), nullable=False)
+    valor = db.Column(db.Numeric(16, 4), nullable=False)
     unidade = db.Column(db.String(40), nullable=False)
+    moeda = db.Column(db.String(3), nullable=False, default="BRL", server_default="BRL")
     fonte = db.Column(db.String(150), nullable=False)
     fonte_url = db.Column(db.String(255))
     data_referencia = db.Column(db.Date, nullable=False, index=True)
+    # Coleta automática: série da fonte (ex.: "bcb:USD"), identificador do dado na fonte (evita duplicar),
+    # horário publicado pela fonte (quando ela informa) e horário em que o Terra do Agro coletou.
+    origem = db.Column(db.String(20), nullable=False, default="manual", server_default="manual", index=True)
+    serie = db.Column(db.String(60), index=True)
+    ref_externa = db.Column(db.String(60))
+    publicado_em = db.Column(db.DateTime)
+    coletado_em = db.Column(db.DateTime)
     registrado_por = db.Column(db.Integer, db.ForeignKey("usuarios.id"))
     created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
+
+
+class FonteCotacao(db.Model):
+    """Estado da coleta de cada fonte automática (controle de frequência e de falhas)."""
+
+    __tablename__ = "fontes_cotacao"
+
+    slug = db.Column(db.String(30), primary_key=True)
+    proxima_em = db.Column(db.DateTime)
+    ultima_tentativa = db.Column(db.DateTime)
+    ultimo_sucesso = db.Column(db.DateTime)
+    ultimo_erro = db.Column(db.String(255))
+    falhas_seguidas = db.Column(db.Integer, nullable=False, default=0, server_default="0")
+
+
+class ConversaIA(TimestampMixin, db.Model):
+    """Conversa com a IA Agro. Pertence a um usuário e, quando houver, à propriedade ativa no início."""
+
+    __tablename__ = "ia_conversas"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
+    propriedade_id = db.Column(db.Integer, db.ForeignKey("propriedades.id", ondelete="SET NULL"), index=True)
+    titulo = db.Column(db.String(120), nullable=False, default="Nova conversa")
+
+    mensagens = db.relationship("MensagemIA", back_populates="conversa", cascade="all, delete-orphan",
+                                order_by="MensagemIA.id")
+
+
+class MensagemIA(db.Model):
+    __tablename__ = "ia_mensagens"
+
+    id = db.Column(db.Integer, primary_key=True)
+    conversa_id = db.Column(db.Integer, db.ForeignKey("ia_conversas.id", ondelete="CASCADE"), nullable=False, index=True)
+    papel = db.Column(db.String(10), nullable=False)  # user | assistant
+    conteudo = db.Column(db.Text, nullable=False)
+    ferramentas = db.Column(db.String(500))  # consultas feitas aos dados (somente os nomes)
+    tokens_entrada = db.Column(db.Integer)
+    tokens_saida = db.Column(db.Integer)
+    erro = db.Column(db.Boolean, nullable=False, default=False, server_default="0")
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False, index=True)
+
+    conversa = db.relationship("ConversaIA", back_populates="mensagens")
 
 
 class ClimaCache(db.Model):

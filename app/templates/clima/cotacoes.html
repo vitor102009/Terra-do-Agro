@@ -1,35 +1,80 @@
 {% extends "layouts/app.html" %}
 {% block title %}Cotações{% endblock %}
+{% macro card(c) %}
+<article class="quote-card" data-chave="{{ c.chave }}">
+  <div class="d-flex justify-content-between align-items-start gap-2">
+    <div><h3 class="quote-name">{{ c.produto }}</h3><span class="badge text-bg-light">{{ c.categoria_rotulo }}</span></div>
+    <span class="badge {{ 'text-bg-success' if c.estado == 'atualizada' else 'text-bg-warning' }}">{{ c.estado }}</span>
+  </div>
+  <div class="quote-value">R$ {{ c.valor|numero(c.casas) }}</div>
+  <div class="small text-muted">{{ c.unidade }}</div>
+  <div class="quote-var {% if c.variacao is not none %}{{ 'up' if c.variacao > 0 else 'down' if c.variacao < 0 else '' }}{% endif %}">
+    {% if c.variacao is not none %}{{ '+' if c.variacao > 0 else '' }}{{ c.variacao|numero(c.casas) }} ({{ '+' if c.variacao_pct > 0 else '' }}{{ c.variacao_pct|numero(2) }}%) vs {{ c.comparado_com.data_referencia }}
+    {% else %}Sem valor anterior comparável{% endif %}
+  </div>
+  <dl class="quote-meta">
+    <dt>Praça</dt><dd>{{ c.praca }}</dd>
+    <dt>{{ 'Publicado' if c.publicado_br else 'Referência' }}</dt><dd>{{ c.publicado_br ~ ' (' ~ c.fuso_publicacao ~ ')' if c.publicado_br else c.data_br ~ ' (a fonte não informa horário)' }}</dd>
+    <dt>Fonte</dt><dd>{% if c.fonte_url %}<a href="{{ c.fonte_url }}" target="_blank" rel="noopener noreferrer">{{ c.fonte }}</a>{% else %}{{ c.fonte }}{% endif %}</dd>
+  </dl>
+  <button class="btn btn-sm btn-outline-secondary w-100" type="button" data-historico="{{ c.chave }}" data-titulo="{{ c.produto }}"><i class="bi bi-graph-up" aria-hidden="true"></i>Histórico</button>
+</article>
+{% endmacro %}
 {% block content %}
-{% call m.page_head('Cotações agropecuárias', 'Valores de referência registrados a partir de fontes identificadas, com data de referência.') %}
+{% call m.page_head('Cotações do agro', 'Preços de referência de fontes identificadas, com praça, unidade, data e horário informados pela fonte.') %}
   {% if current_user.is_admin %}<a class="btn btn-primary" href="{{ url_for('admin.cotacoes') }}"><i class="bi bi-plus-lg" aria-hidden="true"></i>Registrar cotações</a>{% endif %}
 {% endcall %}
-<div class="notice mb-3">O Terra do Agro não gera cotações. Cada valor mostra a fonte e a data de referência informadas no cadastro. Confirme na fonte original antes de negociar.</div>
-{% if recentes %}
-<div class="card mb-3">
-  <div class="table-responsive"><table class="table table-hover align-middle table-responsive-cards">
-    <thead><tr><th>Produto</th><th>Praça</th><th class="num">Valor</th><th>Unidade</th><th>Data de referência</th><th>Fonte</th></tr></thead>
-    <tbody>{% for c in recentes %}<tr>
-      <td data-label="Produto"><a class="fw-semibold" href="{{ url_for('clima.cotacoes', produto=c.produto) }}">{{ c.produto }}</a></td>
-      <td data-label="Praça">{{ c.praca }}{% if c.uf %}/{{ c.uf }}{% endif %}</td>
-      <td class="num fw-semibold" data-label="Valor">{{ c.valor|moeda }}</td>
-      <td data-label="Unidade">{{ c.unidade }}</td>
-      <td data-label="Data">{{ c.data_referencia|data_br }}</td>
-      <td data-label="Fonte">{% if c.fonte_url %}<a href="{{ c.fonte_url }}" target="_blank" rel="noopener noreferrer">{{ c.fonte }}</a>{% else %}{{ c.fonte }}{% endif %}</td>
-    </tr>{% endfor %}</tbody>
-  </table></div>
+
+<div class="quote-status card mb-3" id="cotacoes-app" data-url="{{ url_for('clima.cotacoes_dados') }}" data-historico-url="{{ url_for('clima.cotacoes_historico') }}" data-intervalo="{{ intervalo_tela }}">
+  <div class="card-body d-flex flex-wrap align-items-center gap-2 justify-content-between">
+    <div class="small" aria-live="polite"><span class="status-dot" data-status-dot aria-hidden="true"></span><span data-status-texto>Tela atualizada automaticamente a cada {{ intervalo_tela }} s.</span></div>
+    <button class="btn btn-sm btn-outline-secondary" type="button" data-atualizar><i class="bi bi-arrow-clockwise" aria-hidden="true"></i>Atualizar agora</button>
+  </div>
 </div>
-{% if produto %}
-<div class="card"><div class="card-header"><h2>Histórico: {{ produto }}</h2></div><div class="card-body">
-  {% if grafico %}<div class="chart-box"><canvas role="img" aria-label="Histórico de cotações de {{ produto }}" data-chart='{{ grafico|tojson }}'></canvas></div>
-  {% else %}<p class="text-muted small mb-0">São necessários ao menos dois registros para o gráfico.</p>{% endif %}
-</div></div>
-{% endif %}
-{% else %}
-<div class="card">{{ m.empty('bi-graph-up-arrow', 'Nenhuma cotação registrada', 'As cotações (arroba do boi, leite, milho, soja e outras) aparecem aqui quando o administrador as registra a partir de uma fonte confiável, como boletins do CEPEA/ESALQ, cooperativas ou bolsas.') }}</div>
-{% endif %}
+
+<div class="notice mb-3">A tela consulta o Terra do Agro a cada {{ intervalo_tela }} segundos, mas o preço só muda quando a fonte publica um novo valor. Cada cartão mostra a data e o horário informados pela fonte. Preço de referência não é oferta de compra: confirme na fonte e com o comprador antes de negociar.</div>
+
+<form class="card mb-3" method="get" data-filtros>
+  <div class="card-body row g-2 align-items-end">
+    <div class="col-6 col-md-3"><label class="form-label small" for="f-categoria">Categoria</label>
+      <select class="form-select form-select-sm" id="f-categoria" name="categoria"><option value="">Todas</option>{% for k, v in categorias.items() %}<option value="{{ k }}" {% if filtros.categoria == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-3"><label class="form-label small" for="f-produto">Produto</label>
+      <input class="form-control form-control-sm" id="f-produto" name="produto" value="{{ filtros.produto or '' }}" maxlength="60" placeholder="ex.: boi, soja"></div>
+    <div class="col-6 col-md-2"><label class="form-label small" for="f-uf">Estado</label>
+      <select class="form-select form-select-sm" id="f-uf" name="uf"><option value="">Todos</option>{% for u in ufs %}<option {% if filtros.uf == u %}selected{% endif %}>{{ u }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-2"><label class="form-label small" for="f-fonte">Fonte</label>
+      <select class="form-select form-select-sm" id="f-fonte" name="fonte"><option value="">Todas</option><option value="bcb" {% if filtros.fonte == 'bcb' %}selected{% endif %}>Banco Central</option><option value="cepea" {% if filtros.fonte == 'cepea' %}selected{% endif %}>CEPEA</option><option value="manual" {% if filtros.fonte == 'manual' %}selected{% endif %}>Administrador</option></select></div>
+    <div class="col-12 col-md-2"><button class="btn btn-sm btn-primary w-100" type="submit">Filtrar</button></div>
+  </div>
+</form>
+
+<div class="quote-grid" data-grade>
+  {% for c in itens %}{{ card(c) }}{% endfor %}
+</div>
+<div class="card" data-vazio {% if itens %}hidden{% endif %}>{{ m.empty('bi-graph-up-arrow', 'Nenhuma cotação disponível', 'Não há cotação para estes filtros. As fontes automáticas aparecem quando respondem; outras cotações são registradas pelo administrador a partir de fontes identificadas.') }}</div>
+
+<section class="card mt-3" aria-labelledby="fontes-titulo">
+  <div class="card-header"><h2 id="fontes-titulo">Fontes</h2></div>
+  <ul class="list-group list-group-flush small" data-fontes>
+    {% for f in fontes %}<li class="list-group-item"><strong>{{ f.nome }}</strong> — {{ {'ok': 'conectada', 'indisponivel': 'indisponível', 'desativada': 'desativada', 'aguardando': 'aguardando primeira coleta'}[f.estado] }}. Publicação: {{ f.frequencia_fonte }}. Coleta no máximo a cada {{ f.intervalo_coleta_min }} min.{% if f.ultimo_erro %} <span class="text-danger">{{ f.ultimo_erro }}</span>{% endif %}</li>{% endfor %}
+    <li class="list-group-item">Bolsas (B3, CBOT, ICE) e demais indicadores dependem de licença ou assinatura e não estão conectados. Cotações de outras fontes podem ser registradas pelo administrador com fonte e data.</li>
+  </ul>
+</section>
+
+<div class="modal fade" id="modal-historico" tabindex="-1" aria-labelledby="historico-titulo" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-fullscreen-sm-down"><div class="modal-content">
+    <div class="modal-header"><h2 class="modal-title fs-5" id="historico-titulo">Histórico</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+    <div class="modal-body">
+      <div class="btn-group btn-group-sm mb-2" role="group" aria-label="Período">
+        {% for d in (7, 30, 90, 365) %}<button class="btn btn-outline-secondary{% if d == 90 %} active{% endif %}" type="button" data-dias="{{ d }}">{{ d }} dias</button>{% endfor %}
+      </div>
+      <p class="small mb-2" data-hist-resumo></p>
+      <div class="chart-box"><canvas role="img" aria-label="Gráfico do histórico" data-hist-canvas></canvas></div>
+    </div>
+  </div></div>
+</div>
 {% endblock %}
 {% block scripts %}
 <script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script src="{{ url_for('static', filename='js/cotacoes.js') }}"></script>
 {% endblock %}

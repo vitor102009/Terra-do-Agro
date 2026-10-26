@@ -70,6 +70,26 @@ class Config:
     WEATHER_ENABLED = _bool("WEATHER_ENABLED", True)
     WEATHER_CACHE_MINUTES = 60
 
+    # Cotações automáticas. BCB (PTAX): dados abertos, sem chave.
+    QUOTES_BCB_ENABLED = _bool("QUOTES_BCB_ENABLED", True)
+    # CEPEA: confirme os termos de uso com o CEPEA antes de ativar. IDs confirmados: 2 = Boi gordo, 8 = Bezerro MS.
+    CEPEA_WIDGET_ENABLED = _bool("CEPEA_WIDGET_ENABLED", False)
+    CEPEA_INDICADORES = os.environ.get("CEPEA_INDICADORES", "2,8")
+
+    # IA Agro (Anthropic). Sem ANTHROPIC_API_KEY, a IA fica desativada com aviso na tela.
+    ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+    AI_MODEL = os.environ.get("AI_MODEL", "claude-opus-5-5")
+    AI_EFFORT = os.environ.get("AI_EFFORT", "medium")
+    AI_TIMEOUT_SECONDS = float(os.environ.get("AI_TIMEOUT_SECONDS", "60") or 60)
+    AI_DAILY_LIMIT = int(os.environ.get("AI_DAILY_LIMIT", "40") or 40)  # perguntas por usuário por dia
+    AI_MINUTE_LIMIT = int(os.environ.get("AI_MINUTE_LIMIT", "5") or 5)  # perguntas por usuário por minuto
+    AI_MAX_TOOL_ROUNDS = 6
+
+    # Ative somente atrás de um proxy reverso confiável (PythonAnywhere: true).
+    TRUST_PROXY_HEADERS = _bool("TRUST_PROXY_HEADERS", False)
+    # Bloqueia o uso do sistema (503) enquanto houver migrações pendentes no banco.
+    SCHEMA_CHECK = True
+
     LOGIN_MAX_ATTEMPTS = 5
     LOGIN_WINDOW_MINUTES = 15
 
@@ -84,6 +104,10 @@ class TestConfig(Config):
     SQLALCHEMY_DATABASE_URI = "sqlite://"
     WTF_CSRF_ENABLED = False
     WEATHER_ENABLED = False
+    QUOTES_BCB_ENABLED = False  # testes nunca acessam fontes externas
+    CEPEA_WIDGET_ENABLED = False
+    ANTHROPIC_API_KEY = ""  # testes reais da IA ficam em tests/test_ia_real.py
+    SCHEMA_CHECK = False  # os testes criam as tabelas com create_all
     MAIL_SERVER = ""
 
 

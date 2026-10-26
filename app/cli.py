@@ -200,6 +200,20 @@ def registrar_cli(app):
                         z.write(full, os.path.relpath(full, raiz))
             click.echo(f"Arquivos copiados para {zip_path}")
 
+    @app.cli.command("cotacoes-atualizar")
+    @click.option("--forcar", is_flag=True, help="Ignora o intervalo mínimo entre coletas.")
+    def cotacoes_atualizar(forcar):
+        """Coleta as fontes automáticas de cotações (para tarefa agendada)."""
+        from app.services import cotacoes as servico
+
+        ativas = servico.fontes_ativas()
+        if not ativas:
+            click.echo("Nenhuma fonte automática ativa.")
+        for slug in ativas:
+            n = servico.coletar(slug, forcar=forcar)
+            click.echo(f"{slug}: " + ("intervalo mínimo ainda não passou" if n is None and not forcar else
+                                      "falha (veja o log)" if n is None else f"{n} cotação(ões) nova(s)"))
+
     @app.cli.command("limpar-registros")
     @click.option("--dias", default=90, show_default=True)
     def limpar(dias):

@@ -9,6 +9,7 @@ Plataforma rural com gestão da propriedade (rebanho, pesagens, sanidade, reprod
 ## 1. Instalação no Windows (terminal do VS Code)
 
 Pré-requisito: Python 3.11 ou mais recente (testado com 3.14).
+Testes: `pip install -r requirements-dev.txt` (inclui as dependências de produção).
 
 ```powershell
 cd C:\Users\<voce>\Desktop\TerradoAgro
@@ -32,6 +33,30 @@ flask --app app remover-demo            # remove tudo o que foi marcado como dem
 
 Todos os registros de demonstração têm `is_demo` e aparecem com o selo "Demonstração". O comando é bloqueado com `FLASK_ENV_MODE=production`.
 
+### Publicação no PythonAnywhere
+
+`instance/` e `*.db` não vão para o Git: um clone novo **não tem banco**. Sem `flask setup`, o sistema responde
+"Sistema em manutenção" (503) e registra no log a causa e o comando a executar (antes, o login dava erro 500
+`no such table: tentativas_login`). No console Bash do PythonAnywhere, dentro da pasta do projeto e com o virtualenv ativo:
+
+```bash
+git pull
+pip install -r requirements.txt
+flask --app app backup            # só se já existir um banco com dados
+flask --app app setup             # aplica migrações pendentes; nunca apaga dados
+```
+
+No `.env` de produção: `FLASK_ENV_MODE=production`, `SECRET_KEY=<forte>`, `SESSION_COOKIE_SECURE=true`,
+`TRUST_PROXY_HEADERS=true` e, se usar um banco fora de `instance/`, `DATABASE_URL=sqlite:////home/<usuario>/caminho/terradoagro.db`
+(caminho absoluto, quatro barras). No arquivo WSGI: `from app import create_app` e `application = create_app()`
+(não use `from app import app`: a pasta `app/` tem prioridade sobre `app.py`). Depois, clique em **Reload** na aba Web.
+
+Depois do `setup`, para a IA e as cotações: defina `ANTHROPIC_API_KEY` no `.env` do servidor e, na aba **Tasks**,
+agende `cd ~/<pasta> && <virtualenv>/bin/flask --app app cotacoes-atualizar` (a página também coleta sozinha quando
+o intervalo vence). A web app precisa usar **Python 3.11 ou mais recente**. Contas gratuitas do PythonAnywhere só
+acessam sites de uma lista permitida: se `olinda.bcb.gov.br` ou `api.anthropic.com` não estiverem nela, a fonte aparece
+como indisponível e a IA informa falta de conexão.
+
 ## 2. Comandos úteis
 
 | Comando | O que faz |
@@ -40,6 +65,7 @@ Todos os registros de demonstração têm `is_demo` e aparecem com o selo "Demon
 | `flask --app app db migrate -m "msg"` / `db upgrade` | Gera e aplica novas migrações após alterar modelos |
 | `flask --app app create-admin` | Cria ou promove um administrador. Também aceita `ADMIN_PASSWORD` no ambiente |
 | `flask --app app backup [--com-arquivos]` | Cópia consistente do SQLite (API de backup) em `backups/`, e opcionalmente das fotos e anexos |
+| `flask --app app cotacoes-atualizar [--forcar]` | Coleta as fontes automáticas de cotações respeitando o intervalo mínimo |
 | `flask --app app limpar-registros --dias 90` | Política de retenção: tentativas de login e registros de sincronização antigos |
 
 **Backup recomendado:** agende `flask --app app backup --com-arquivos` diariamente (Agendador de Tarefas do Windows) e copie a pasta `backups/` para outro disco ou para a nuvem. Para restaurar, pare o servidor e substitua `instance/terradoagro.db` pela cópia desejada.
@@ -129,7 +155,22 @@ Como funciona:
 - **E-mail:** configure SMTP no `.env`. Sem SMTP, em desenvolvimento os e-mails (recuperação de senha, confirmação) são gravados em `instance/mail_outbox/`. Em produção, nada é enviado de forma simulada.
 - **Pagamentos e entregas:** não integrados. O marketplace informa isso claramente e a negociação é feita pelo chat.
 
-## 9. Limitações conhecidas e próximos passos
+## 9. IA Agro e cotações
+
+**IA Agro** (`/ia`): chat em português com o modelo `claude-opus-5-5` (SDK oficial `anthropic`). A IA consulta, por
+ferramentas no servidor, somente a propriedade ativa e as permissões do usuário (financeiro só para quem tem
+permissão; anúncios só os próprios). Endereço, coordenadas, e-mail e telefone não são enviados ao provedor. Ela não
+publica anúncios, não envia mensagens e não faz pagamentos. Histórico por usuário; limites de 5 perguntas/minuto e 40/dia
+(ajustáveis). Sem `ANTHROPIC_API_KEY`, a tela mostra que a IA não está configurada. Voz: ditado e leitura em voz alta pelas
+APIs do próprio navegador, exibidos apenas quando o navegador oferece suporte. O teste com o provedor real é
+`RUN_REAL_AI=1 python -m pytest tests/test_ia_real.py` (gera custo).
+
+**Cotações** (`/cotacoes`): a tela consulta o servidor a cada 3 s; o servidor consulta cada fonte no máximo uma vez por
+intervalo (BCB: 15 min) e guarda o resultado. O preço só muda quando a fonte publica. Fontes: Banco Central (PTAX
+dólar e euro, horário publicado pelo BCB), CEPEA (desativado por padrão, aguardando confirmação dos termos de uso) e
+registros do administrador. Bolsas (B3, CBOT, ICE) exigem licença e não estão conectadas.
+
+## 10. Limitações conhecidas e próximos passos
 
 - O chat usa atualização periódica (a cada 4 s), não WebSocket.
 - Relatórios em PDF são gerados por "Imprimir › Salvar como PDF", com folha de estilo de impressão. Não há gerador de PDF no servidor.

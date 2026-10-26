@@ -31,6 +31,7 @@ BLUEPRINTS = [
     ("app.feed.routes", "bp", "/feed"),
     ("app.notificacoes.routes", "bp", None),
     ("app.clima.routes", "bp", None),
+    ("app.ia.routes", "bp", "/ia"),
     ("app.admin.routes", "bp", "/admin"),
     ("app.api.routes", "bp", "/api"),
 ]
@@ -67,6 +68,16 @@ def create_app(config_object=None):
     from app.cli import registrar_cli
 
     registrar_cli(app)
+
+    if app.config.get("TRUST_PROXY_HEADERS"):
+        # Atrás de proxy (PythonAnywhere, Nginx): IP real do cliente e HTTPS. Sem isso, todos os acessos
+        # teriam o IP do proxy e 5 senhas erradas de qualquer pessoa bloqueariam o login de todos.
+        from werkzeug.middleware.proxy_fix import ProxyFix
+
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+    # Conferido na primeira requisição (os comandos `flask setup`/`db` não passam por aqui).
+    app.config["BANCO_PRONTO"] = not app.config.get("SCHEMA_CHECK", True)
     return app
 
 
@@ -151,6 +162,15 @@ def _registrar_hooks(app):
     def antes():
         if request.endpoint and (request.endpoint == "static" or request.endpoint.startswith("main.pwa_")):
             return
+        if not app.config.get("BANCO_PRONTO"):
+            from app.utils.esquema import verificar_banco
+
+            if not verificar_banco(app):  # revalida: o setup pode ter sido feito sem reiniciar
+                if _quer_json():
+                    return jsonify(erro="Sistema em manutenção. Tente novamente em alguns minutos."), 503
+                return render_template("errors/erro.html", codigo=503, titulo="Sistema em manutenção",
+                                       mensagem="O sistema está sendo atualizado e volta em alguns minutos. "
+                                                "Seus dados estão preservados."), 503
         carregar_propriedade_ativa()
 
     @app.after_request
@@ -158,7 +178,7 @@ def _registrar_hooks(app):
         resp.headers.setdefault("X-Content-Type-Options", "nosniff")
         resp.headers.setdefault("X-Frame-Options", "DENY")
         resp.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-        resp.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=(self)")
+        resp.headers.setdefault("Permissions-Policy", "camera=(), microphone=(self), geolocation=(self)")
         resp.headers.setdefault(
             "Content-Security-Policy",
             "default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; "

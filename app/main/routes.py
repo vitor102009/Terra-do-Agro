@@ -6,10 +6,11 @@ from flask_login import current_user, login_required
 
 from app.extensions import db
 from app.models import (
-    Animal, Anuncio, Avaliacao, Comentario, Cotacao, Denuncia, Grupo, Mensagem, PerfilProfissional, Post, User, Vaga,
+    Animal, Anuncio, Avaliacao, Comentario, Denuncia, Grupo, Mensagem, PerfilProfissional, Post, User, Vaga,
 )
 from app.models.sistema import ALVOS_DENUNCIA, MOTIVOS_DENUNCIA
 from app.models.user import PAPEIS_USUARIO
+from app.services import cotacoes as servico_cotacoes
 from app.services import indicadores
 from app.services.alertas import gerar_alertas
 from app.utils.acesso import pode
@@ -64,7 +65,7 @@ def dashboard():
     dados = None
     if g.propriedade:
         dados = indicadores.resumo_dashboard(g.propriedade, chave, pode("financeiro"))
-    cotacoes = Cotacao.query.order_by(Cotacao.data_referencia.desc(), Cotacao.id.desc()).limit(4).all()
+    cotacoes = servico_cotacoes.recentes()[:5]
     return render_template("main/dashboard.html", d=dados, periodo=chave, periodos=indicadores.PERIODOS,
                            cotacoes=cotacoes, papeis=PAPEIS_USUARIO)
 

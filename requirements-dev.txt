@@ -1,4 +1,6 @@
+# Desenvolvimento e testes: tudo de produção + ferramentas de teste. Não é necessário no servidor.
 -r requirements.txt
+pytest==9.1.1
 # Teste ponta a ponta da PWA em navegador real (usa o Microsoft Edge instalado; não baixa navegadores)
 playwright==1.64.0
 pyflakes

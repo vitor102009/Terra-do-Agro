@@ -1,0 +1,61 @@
+{% extends "layouts/app.html" %}
+{% block title %}IA Agro{% endblock %}
+{% block content %}
+{% call m.page_head('IA Agro', 'Assistente que responde com base nos dados da sua propriedade e nas cotações disponíveis no sistema.') %}
+  <a class="btn btn-outline-secondary" href="{{ url_for('ia.index') }}"><i class="bi bi-plus-lg" aria-hidden="true"></i>Nova conversa</a>
+{% endcall %}
+
+{% if not configurada %}
+<div class="alert alert-warning">A IA Agro ainda não está configurada neste servidor. O administrador precisa definir a variável <code>ANTHROPIC_API_KEY</code> no arquivo <code>.env</code> do servidor e reiniciar a aplicação.</div>
+{% endif %}
+{% if outra_propriedade %}
+<div class="alert alert-info">Esta conversa é de outra propriedade. Para perguntar sobre a propriedade ativa, inicie uma nova conversa.</div>
+{% endif %}
+
+<div class="ia-shell">
+  <aside class="card"><div class="card-body p-2">
+    <h2 class="small text-muted px-2 mb-2">Conversas</h2>
+    <nav class="ia-lista" aria-label="Conversas anteriores">
+      {% for c in conversas %}<a href="{{ url_for('ia.index', cid=c.id) }}" {% if atual and atual.id == c.id %}class="active" aria-current="page"{% endif %} title="{{ c.titulo }}">{{ c.titulo }}</a>
+      {% else %}<p class="small text-muted px-2 mb-0">Nenhuma conversa ainda.</p>{% endfor %}
+    </nav>
+  </div></aside>
+
+  <section class="card ia-chat" id="ia-app" data-url="{{ url_for('ia.perguntar') }}" data-conversa="{{ atual.id if atual else '' }}" aria-label="Conversa com a IA Agro">
+    <div class="card-body d-flex flex-column gap-2">
+      <div class="ia-mensagens" data-mensagens aria-live="polite">
+        {% for msg in mensagens %}
+        <div class="ia-msg {{ msg.papel }}{% if msg.erro %} erro{% endif %}">{{ msg.texto }}{% if msg.ferramentas %}<span class="ia-ferr">Dados consultados: {{ msg.ferramentas|join(', ') }}</span>{% endif %}</div>
+        {% else %}
+        <div class="text-muted small" data-boas-vindas>
+          <p class="mb-2">Exemplos de perguntas:</p>
+          <div class="d-flex flex-wrap gap-2">
+            {% for s in ['Qual é a cotação mais recente do boi gordo disponível?', 'Quais vacinas estão vencidas ou próximas?', 'Resuma minhas receitas, despesas e resultado do mês.', 'Qual o valor estimado do meu rebanho?', 'Que dados faltam para uma análise financeira confiável?', 'Escreva um anúncio de venda para meus garrotes.'] %}
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-sugestao>{{ s }}</button>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <form class="ia-form" data-form>
+        <label class="visually-hidden" for="ia-pergunta">Sua pergunta</label>
+        <textarea class="form-control" id="ia-pergunta" rows="2" maxlength="2000" placeholder="Pergunte sobre seu rebanho, finanças, estoque ou cotações…" {% if not configurada %}disabled{% endif %} required></textarea>
+        <div class="d-flex flex-wrap gap-2 mt-2 align-items-center">
+          <button class="btn btn-primary" type="submit" data-enviar {% if not configurada %}disabled{% endif %}><i class="bi bi-send" aria-hidden="true"></i>Enviar</button>
+          <button class="btn btn-outline-secondary" type="button" data-voz hidden {% if not configurada %}disabled{% endif %} aria-pressed="false"><i class="bi bi-mic" aria-hidden="true"></i>Falar</button>
+          <div class="form-check form-switch mb-0" data-ler-wrap hidden>
+            <input class="form-check-input" type="checkbox" id="ia-ler" data-ler><label class="form-check-label small" for="ia-ler">Ler respostas em voz alta</label>
+          </div>
+          <small class="text-muted ms-auto">Limite: {{ limite_dia }} perguntas por dia.</small>
+        </div>
+        <small class="text-muted d-block mt-1" data-voz-aviso hidden>A entrada por voz usa o reconhecimento do próprio navegador, que pode enviar o áudio ao serviço do fabricante (por exemplo, Google no Chrome).</small>
+      </form>
+      <small class="text-muted">A IA pode errar. Confira valores importantes nas telas do sistema. Ela não publica anúncios, não envia mensagens e não faz pagamentos.</small>
+      {% if atual %}
+      <form method="post" action="{{ url_for('ia.excluir', cid=atual.id) }}" data-confirm="Excluir esta conversa?">{{ m.csrf() }}<button class="btn btn-link btn-sm text-danger p-0" type="submit">Excluir conversa</button></form>
+      {% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/ia.js') }}"></script>{% endblock %}

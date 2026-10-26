@@ -228,8 +228,8 @@
         <ul class="list-unstyled mb-0">
           {% for c in cotacoes %}
           <li class="d-flex justify-content-between py-2 border-bottom">
-            <span><span class="fw-semibold">{{ c.produto }}</span><small class="d-block text-muted">{{ c.praca }} · {{ c.data_referencia|data_br }} · {{ c.fonte }}</small></span>
-            <span class="fw-bold text-nowrap">{{ c.valor|moeda }}<small class="d-block text-muted text-end fw-normal">{{ c.unidade }}</small></span>
+            <span><span class="fw-semibold">{{ c.produto }}</span><small class="d-block text-muted">{{ c.praca }} · {{ c.publicado_br or c.data_br }} · {{ c.fonte }}{% if c.estado == 'desatualizada' %} · <span class="text-danger">desatualizada</span>{% endif %}</small></span>
+            <span class="fw-bold text-nowrap">R$ {{ c.valor|numero(c.casas) }}<small class="d-block text-muted text-end fw-normal">{{ c.unidade }}</small></span>
           </li>
           {% endfor %}
         </ul>

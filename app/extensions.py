@@ -20,4 +20,6 @@ login_manager = LoginManager()
 login_manager.login_view = "auth.login"
 login_manager.login_message = "Entre na sua conta para acessar esta página."
 login_manager.login_message_category = "warning"
-login_manager.session_protection = "strong"
+# "basic": no celular o IP muda (Wi-Fi ↔ 4G); "strong" derrubava a sessão a cada troca de rede.
+# A sessão continua protegida por cookie HttpOnly/SameSite e pela versão de sessão do usuário.
+login_manager.session_protection = "basic"

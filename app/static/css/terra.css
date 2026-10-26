@@ -385,3 +385,35 @@ h1, h2, h3, h4, h5 { color: var(--ta-black); font-weight: 650; letter-spacing: -
   a { color: inherit; }
 }
 .print-only { display: none; }
+
+/* ---- Cotações */
+.quote-grid { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
+.quote-card { background: var(--ta-surface); border: 1px solid var(--ta-border); border-radius: var(--ta-radius); padding: .9rem; display: flex; flex-direction: column; gap: .35rem; min-width: 0; }
+.quote-card.quote-changed { animation: quote-flash 1.6s ease-out; }
+@keyframes quote-flash { from { background: var(--ta-gold-soft); } to { background: var(--ta-surface); } }
+.quote-name { font-size: 1rem; font-weight: 700; margin: 0 0 .2rem; overflow-wrap: anywhere; }
+.quote-value { font-size: 1.6rem; font-weight: 800; color: var(--ta-green-dark); font-variant-numeric: tabular-nums; }
+.quote-var { font-size: .85rem; color: var(--ta-muted); font-variant-numeric: tabular-nums; }
+.quote-var.up { color: var(--ta-green-mid); }
+.quote-var.down { color: var(--ta-danger); }
+.quote-meta { display: grid; grid-template-columns: auto 1fr; gap: .1rem .6rem; font-size: .8rem; margin: .25rem 0 .4rem; }
+.quote-meta dt { color: var(--ta-muted); font-weight: 600; }
+.quote-meta dd { margin: 0; overflow-wrap: anywhere; }
+.status-dot { display: inline-block; width: .6rem; height: .6rem; border-radius: 50%; background: var(--ta-muted); margin-right: .4rem; vertical-align: middle; }
+.status-dot[data-tipo="ok"] { background: var(--ta-green-mid); }
+.status-dot[data-tipo="aviso"] { background: var(--ta-warning); }
+.status-dot[data-tipo="erro"] { background: var(--ta-danger); }
+
+/* ---- IA Agro */
+.ia-shell { display: grid; gap: 1rem; grid-template-columns: 260px 1fr; min-height: 60vh; }
+@media (max-width: 991.98px) { .ia-shell { grid-template-columns: 1fr; } .ia-lista { max-height: 9rem; overflow-y: auto; } }
+.ia-lista a { display: block; padding: .45rem .6rem; border-radius: 8px; color: var(--ta-text); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ia-lista a.active, .ia-lista a:hover { background: var(--ta-gold-soft); }
+.ia-chat { display: flex; flex-direction: column; min-width: 0; }
+.ia-mensagens { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: .6rem; padding: .25rem; max-height: 62vh; }
+.ia-msg { max-width: min(46rem, 92%); padding: .65rem .85rem; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; }
+.ia-msg.user { align-self: flex-end; background: var(--ta-green); color: #fff; }
+.ia-msg.assistant { align-self: flex-start; background: var(--ta-surface); border: 1px solid var(--ta-border); }
+.ia-msg.erro { border-color: var(--ta-danger); color: var(--ta-danger); }
+.ia-msg .ia-ferr { display: block; font-size: .75rem; color: var(--ta-muted); margin-top: .35rem; }
+.ia-form textarea { resize: none; }

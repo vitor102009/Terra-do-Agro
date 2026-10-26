@@ -17,6 +17,6 @@ from app.models.social import (  # noqa: F401
     Bloqueio, Comentario, Conversa, Grupo, GrupoMembro, Mensagem, Post, Reacao,
 )
 from app.models.sistema import (  # noqa: F401
-    AuditLog, ChamadoSuporte, ClimaCache, Configuracao, Cotacao, Denuncia, Notificacao,
-    OperacaoOffline, Tarefa,
+    AuditLog, ChamadoSuporte, ClimaCache, Configuracao, ConversaIA, Cotacao, Denuncia, FonteCotacao, MensagemIA,
+    Notificacao, OperacaoOffline, Tarefa,
 )

@@ -16,6 +16,8 @@ from werkzeug.serving import make_server  # noqa: E402
 
 from app import create_app  # noqa: E402
 from app.cli import seed_base  # noqa: E402
+from app.utils.esquema import pasta_migracoes  # noqa: E402
+from flask_migrate import upgrade  # noqa: E402
 from app.extensions import db  # noqa: E402
 from app.models import Animal, Pesagem, Propriedade, PropriedadeMembro, User  # noqa: E402
 from config import Config  # noqa: E402
@@ -30,11 +32,12 @@ def servidor(tmp_path):
         SQLALCHEMY_DATABASE_URI = "sqlite:///" + str(tmp_path / "e2e.db").replace("\\", "/")
         UPLOAD_ROOT = str(tmp_path / "uploads")
         WEATHER_ENABLED = False
+        QUOTES_BCB_ENABLED = False  # sem acesso à internet nos testes
         LOG_DIR = str(tmp_path / "logs")
 
     app = create_app(Cfg)
     with app.app_context():
-        db.create_all()
+        upgrade(directory=pasta_migracoes(app))  # mesmo caminho da produção (flask setup)
         seed_base()
         u = User(nome="Vitor Campo", email="campo@teste.com", email_verificado=True)
         u.set_password(SENHA)
@@ -175,4 +178,54 @@ def test_layout_responsivo_celular(servidor, navegador):
     for url in ("/rebanho/", "/marketplace/", "/financeiro/", "/mensagens/"):
         page.goto(base + url)
         assert page.evaluate("document.documentElement.scrollWidth") <= 392, url
+    ctx.close()
+
+
+def _entrar_celular(navegador, base, largura=360):
+    ctx = navegador.new_context(viewport={"width": largura, "height": 780}, is_mobile=True, has_touch=True)
+    page = ctx.new_page()
+    page.goto(base + "/entrar")
+    page.fill("#f-email", "campo@teste.com")
+    page.fill("#f-senha", SENHA)
+    page.click("button[type=submit]")
+    page.wait_for_url("**/painel")
+    return ctx, page
+
+
+def test_cotacoes_atualizam_a_cada_3s_no_celular(servidor, navegador):
+    from app.models import Cotacao
+
+    app, base = servidor
+    with app.app_context():
+        db.session.add(Cotacao(produto="Boi gordo", praca="Estado de SP", uf="SP", valor=Decimal("300.00"), unidade="R$/@",
+                               fonte="Fonte de teste", data_referencia=date.today()))
+        db.session.commit()
+    ctx, page = _entrar_celular(navegador, base)
+    consultas = []
+    page.on("request", lambda r: consultas.append(r.url) if "/cotacoes/dados.json" in r.url else None)
+    page.goto(base + "/cotacoes")
+    assert page.inner_text(".quote-card .quote-value") == "R$ 300,00"
+    assert page.evaluate("document.documentElement.scrollWidth") <= 360
+    page.wait_for_timeout(7000)
+    assert 2 <= len(consultas) <= 3, consultas  # ~1 consulta a cada 3 s, sem rajadas
+    with app.app_context():  # a "fonte" publica um valor novo: a tela muda sem recarregar
+        c = Cotacao.query.first()
+        c.valor = Decimal("305.50")
+        db.session.commit()
+    for _ in range(16):  # sem eval de string: a CSP do site bloqueia 'unsafe-eval'
+        if page.inner_text(".quote-card .quote-value") == "R$ 305,50":
+            break
+        page.wait_for_timeout(500)
+    assert page.inner_text(".quote-card .quote-value") == "R$ 305,50"
+    assert "última verificação" in page.inner_text("[data-status-texto]")
+    ctx.close()
+
+
+def test_ia_agro_responsiva_sem_chave(servidor, navegador):
+    _app, base = servidor
+    ctx, page = _entrar_celular(navegador, base)
+    page.goto(base + "/ia/")
+    assert page.evaluate("document.documentElement.scrollWidth") <= 360
+    assert page.is_visible("text=ANTHROPIC_API_KEY")
+    assert page.is_disabled("#ia-pergunta")
     ctx.close()

@@ -1,7 +1,11 @@
+import hashlib
+import json
+
 from flask import Blueprint, g, jsonify, render_template, request
 from flask_login import current_user, login_required
 
-from app.models import Cotacao
+from app.models import utcnow
+from app.services import cotacoes as servico_cotacoes
 from app.services.clima import previsao
 
 bp = Blueprint("clima", __name__)
@@ -27,23 +31,41 @@ def resumo():
     return resp
 
 
+def _filtros():
+    a = request.args
+    return {k: (a.get(k) or "").strip()[:60] for k in ("categoria", "produto", "uf", "fonte") if a.get(k)}
+
+
 @bp.route("/cotacoes")
 @login_required
 def cotacoes():
-    produto = request.args.get("produto")
-    todas = Cotacao.query.order_by(Cotacao.data_referencia.desc(), Cotacao.id.desc()).all()
-    recentes = {}
-    for c in todas:
-        recentes.setdefault((c.produto, c.praca), c)
-    produtos = sorted({c.produto for c in todas})
-    historico = [c for c in todas if c.produto == produto][:60] if produto else []
-    grafico = None
-    if produto and len(historico) >= 2:
-        serie = sorted(historico, key=lambda c: c.data_referencia)
-        pracas = sorted({c.praca for c in serie})
-        datas = sorted({c.data_referencia for c in serie})
-        grafico = {"type": "line", "money": True, "labels": [d.strftime("%d/%m/%y") for d in datas],
-                   "datasets": [{"label": pr, "data": [next((float(c.valor) for c in serie if c.praca == pr and c.data_referencia == d), None)
-                                                       for d in datas]} for pr in pracas]}
-    return render_template("clima/cotacoes.html", recentes=sorted(recentes.values(), key=lambda c: (c.produto, c.praca)),
-                           produtos=produtos, produto=produto, historico=historico, grafico=grafico)
+    itens = servico_cotacoes.recentes(_filtros())
+    return render_template("clima/cotacoes.html", itens=itens, filtros=_filtros(),
+                           categorias={k: v[0] for k, v in servico_cotacoes.CATEGORIAS.items()},
+                           fontes=servico_cotacoes.estado_fontes(), intervalo_tela=3)
+
+
+@bp.route("/cotacoes/dados.json")
+@login_required
+def cotacoes_dados():
+    # Coleta somente as fontes cujo intervalo mínimo venceu; nas demais chamadas, só lê o banco.
+    servico_cotacoes.atualizar_vencidas()
+    itens = servico_cotacoes.recentes(_filtros())
+    corpo = {"itens": itens, "fontes": servico_cotacoes.estado_fontes()}
+    corpo["versao"] = hashlib.sha1(json.dumps(corpo, sort_keys=True, default=str).encode()).hexdigest()[:16]
+    corpo["consultado_em"] = utcnow().isoformat(timespec="seconds") + "Z"
+    resp = jsonify(corpo)
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
+@bp.route("/cotacoes/historico.json")
+@login_required
+def cotacoes_historico():
+    chave = (request.args.get("chave") or "").strip()[:200]
+    dias = request.args.get("dias", 90, type=int)
+    if not chave or dias not in (7, 30, 90, 180, 365):
+        return jsonify(erro="Parâmetros inválidos."), 400
+    resp = jsonify(servico_cotacoes.historico(chave, dias))
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
