@@ -33,6 +33,7 @@ def servidor(tmp_path):
         UPLOAD_ROOT = str(tmp_path / "uploads")
         WEATHER_ENABLED = False
         QUOTES_BCB_ENABLED = False  # sem acesso à internet nos testes
+        ANTHROPIC_API_KEY = ""  # nunca usa a chave real do .env do desenvolvedor
         LOG_DIR = str(tmp_path / "logs")
 
     app = create_app(Cfg)
@@ -271,3 +272,24 @@ def test_ia_agro_interface_completa_com_provedor_simulado(servidor, navegador, m
             ctx.close()
     finally:
         ia_agro._status.update(estado=None, em=None)
+
+
+def test_cotacoes_filtro_sem_fonte_e_atualizar_agora(servidor, navegador):
+    _app, base = servidor
+    ctx, page = _entrar_celular(navegador, base, 1280)
+    page.goto(base + "/cotacoes")
+    page.select_option("#f-categoria", "pecuaria")
+    page.click("form[data-filtros] button[type=submit]")
+    for _ in range(10):
+        if page.is_visible("[data-vazio]") and "CC BY-NC" in page.inner_text("[data-vazio-texto]"):
+            break
+        page.wait_for_timeout(500)
+    assert "Nenhuma cotação de pecuária disponível" in page.inner_text("[data-vazio-texto]")
+    page.click("[data-atualizar]")
+    for _ in range(10):
+        if "última verificação" in page.inner_text("[data-status-texto]"):
+            break
+        page.wait_for_timeout(500)
+    assert "última verificação" in page.inner_text("[data-status-texto]")
+    assert not page.is_disabled("[data-atualizar]")
+    ctx.close()

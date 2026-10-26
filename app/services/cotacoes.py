@@ -26,6 +26,7 @@ from sqlalchemy import or_, update
 
 from app.extensions import db
 from app.models import Cotacao, FonteCotacao, utcnow
+from app.utils.formatos import datahora_br
 
 USER_AGENT = "TerraDoAgro/1.0 (+cotacoes)"
 TIMEOUT = 8
@@ -42,7 +43,8 @@ INTERVALOS = {"bcb": 15, "cepea": 60}
 # Idade a partir da qual o dado é exibido como desatualizado (dias corridos; cobre fins de semana e feriados).
 IDADE_MAXIMA_DIAS = {"bcb": 4, "cepea": 5, "manual": 10}
 
-MOEDAS_BCB = {"USD": "Dólar comercial (PTAX venda)", "EUR": "Euro (PTAX venda)"}
+MOEDAS_BCB = {"USD": "Dólar comercial", "EUR": "Euro"}
+LADOS_PTAX = {"cotacaoVenda": "venda", "cotacaoCompra": "compra"}
 
 CATEGORIAS = {
     "pecuaria": ("Pecuária", ("boi", "bezerr", "vaca", "garrote", "novilh", "arroba")),
@@ -81,6 +83,17 @@ def _get(url):
 
 # ------------------------------------------------------------------ adaptadores (retornam itens normalizados)
 
+def _data_hora_bcb(texto):
+    """'2026-10-20 13:09:36.24278' -> datetime. O BCB envia de 1 a 6 dígitos de fração de segundo."""
+    base, _, frac = str(texto).strip().partition(".")
+    quando = datetime.strptime(base, "%Y-%m-%d %H:%M:%S")
+    if frac:
+        if not frac.isdigit():
+            raise ValueError("fração de segundo inválida")
+        quando = quando.replace(microsecond=int(frac[:6].ljust(6, "0")))
+    return quando
+
+
 def _bcb(hoje=None, buscar=_get):
     hoje = hoje or date.today()
     inicio = hoje - timedelta(days=10)
@@ -90,7 +103,7 @@ def _bcb(hoje=None, buscar=_get):
                "CotacaoMoedaPeriodo(moeda=@moeda,dataInicial=@dataInicial,dataFinalCotacao=@dataFinalCotacao)?"
                + urllib.parse.urlencode({"@moeda": f"'{moeda}'", "@dataInicial": f"'{inicio:%m-%d-%Y}'",
                                          "@dataFinalCotacao": f"'{hoje:%m-%d-%Y}'", "$format": "json",
-                                         "$select": "cotacaoVenda,dataHoraCotacao,tipoBoletim"}))
+                                         "$select": "cotacaoCompra,cotacaoVenda,dataHoraCotacao,tipoBoletim"}))
         try:
             linhas = json.loads(buscar(url)).get("value")
         except ValueError as exc:
@@ -99,15 +112,24 @@ def _bcb(hoje=None, buscar=_get):
             raise FonteIndisponivel("Resposta inesperada do Banco Central.")
         for linha in linhas:
             try:
-                quando = datetime.fromisoformat(str(linha["dataHoraCotacao"])[:26])
-                valor = Decimal(str(linha["cotacaoVenda"]))
-            except (KeyError, ValueError, InvalidOperation):
+                quando = _data_hora_bcb(linha["dataHoraCotacao"])
+            except (KeyError, ValueError):
                 continue
             boletim = str(linha.get("tipoBoletim") or "")[:20]
-            itens.append({"serie": f"bcb:{moeda}", "ref_externa": f"{quando.isoformat()}|{boletim}", "produto": produto,
-                          "praca": f"Brasil — taxa PTAX ({boletim.lower() or 'boletim'})", "uf": None, "valor": valor,
-                          "unidade": f"R$ por 1 {moeda}", "moeda": "BRL", "data_referencia": quando.date(),
-                          "publicado_em": quando})
+            for campo, lado in LADOS_PTAX.items():
+                try:
+                    valor = Decimal(str(linha[campo]))
+                except (KeyError, InvalidOperation):
+                    continue
+                if not valor.is_finite() or valor <= 0:
+                    continue
+                # A venda mantém o identificador original ("bcb:USD") para preservar o histórico já gravado.
+                serie = f"bcb:{moeda}" if lado == "venda" else f"bcb:{moeda}:compra"
+                itens.append({"serie": serie, "ref_externa": f"{quando.isoformat()}|{boletim}",
+                              "produto": f"{produto} (PTAX {lado})",
+                              "praca": f"Brasil — taxa PTAX ({boletim.lower() or 'boletim'})", "uf": None, "valor": valor,
+                              "unidade": f"R$ por 1 {moeda}", "moeda": "BRL", "data_referencia": quando.date(),
+                              "publicado_em": quando})
     return itens
 
 
@@ -161,6 +183,9 @@ def fontes_ativas():
 
 # ------------------------------------------------------------------ coleta com controle de frequência
 
+FORCAR_MIN_SEGUNDOS = 60  # "Atualizar agora" consulta a fonte no máximo uma vez por minuto
+
+
 def _reservar(slug, agora, forcar):
     """Reserva atômica da coleta: só uma requisição por intervalo chega à fonte externa."""
     fonte = db.session.get(FonteCotacao, slug)
@@ -169,9 +194,14 @@ def _reservar(slug, agora, forcar):
         db.session.commit()
     elif not forcar and fonte.proxima_em and fonte.proxima_em > agora:
         return False  # leitura apenas: a tela consulta a cada 3 s sem gerar escrita no banco
+    elif forcar and fonte.ultima_tentativa and (agora - fonte.ultima_tentativa).total_seconds() < FORCAR_MIN_SEGUNDOS:
+        return False
     proxima = agora + timedelta(minutes=INTERVALOS.get(slug, 60))
     cond = [FonteCotacao.slug == slug]
-    if not forcar:
+    if forcar:
+        cond.append(or_(FonteCotacao.ultima_tentativa.is_(None),
+                        FonteCotacao.ultima_tentativa <= agora - timedelta(seconds=FORCAR_MIN_SEGUNDOS)))
+    else:
         cond.append(or_(FonteCotacao.proxima_em.is_(None), FonteCotacao.proxima_em <= agora))
     res = db.session.execute(update(FonteCotacao).where(*cond).values(proxima_em=proxima, ultima_tentativa=agora))
     db.session.commit()
@@ -216,16 +246,25 @@ def coletar(slug, forcar=False, buscar=None):
         return None
 
 
-def atualizar_vencidas():
+def atualizar_vencidas(forcar=False):
+    """Coleta as fontes vencidas. Com forcar=True ("Atualizar agora"), no máximo uma vez por minuto por fonte."""
     for slug in fontes_ativas():
-        coletar(slug)
+        coletar(slug, forcar=forcar)
 
 
 # ------------------------------------------------------------------ leitura para tela, API e IA
 
-def _estado(c, hoje):
-    idade = (hoje - c.data_referencia).days
-    return "desatualizada" if idade > IDADE_MAXIMA_DIAS.get(c.origem, 10) else "atualizada"
+def _estado(c, hoje, fonte=None):
+    """(estado, motivo). Só é "atualizada" se o valor for recente E a fonte estiver respondendo."""
+    if (hoje - c.data_referencia).days > IDADE_MAXIMA_DIAS.get(c.origem, 10):
+        return "desatualizada", f"Último valor publicado em {c.data_referencia:%d/%m/%Y}."
+    if fonte is not None and fonte.ultimo_erro:
+        return "desatualizada", "Fonte indisponível no momento: este é o último valor válido obtido."
+    return "atualizada", None
+
+
+def _br(dt_utc):
+    return datahora_br(dt_utc) if dt_utc else None
 
 
 def _chave(c):
@@ -236,12 +275,13 @@ def _num(v):
     return float(v) if v is not None else None
 
 
-def serializar(c, anterior, hoje):
+def serializar(c, anterior, hoje, fonte=None):
     var_abs = var_pct = None
     if anterior is not None and anterior.unidade == c.unidade and anterior.moeda == c.moeda:
         var_abs = c.valor - anterior.valor
         var_pct = (var_abs / anterior.valor * 100) if anterior.valor else None
     cat = categoria_de(c.produto, c.origem)
+    estado, motivo = _estado(c, hoje, fonte)
     return {
         "id": c.id, "chave": _chave(c), "produto": c.produto, "categoria": cat, "categoria_rotulo": rotulo_categoria(cat),
         "praca": c.praca, "uf": c.uf, "valor": _num(c.valor), "unidade": c.unidade, "moeda": c.moeda,
@@ -252,9 +292,12 @@ def serializar(c, anterior, hoje):
         "publicado_br": c.publicado_em.strftime("%d/%m/%Y %H:%M") if c.publicado_em else None,
         "fuso_publicacao": "Horário de Brasília" if c.origem == "bcb" else None,
         "coletado_em": (c.coletado_em.isoformat(timespec="seconds") + "Z") if c.coletado_em else None,
-        "estado": _estado(c, hoje),
+        "estado": estado, "motivo_estado": motivo,
+        # Última consulta bem-sucedida à fonte (Brasília). Registro manual: quando foi cadastrado.
+        "consultado_br": _br(fonte.ultimo_sucesso) if fonte is not None else _br(c.created_at),
         "variacao": _num(var_abs), "variacao_pct": _num(var_pct),
-        "comparado_com": ({"data_referencia": anterior.data_referencia.isoformat(), "valor": _num(anterior.valor)}
+        "comparado_com": ({"data_referencia": anterior.data_referencia.isoformat(),
+                           "data_br": anterior.data_referencia.strftime("%d/%m/%Y"), "valor": _num(anterior.valor)}
                           if var_abs is not None else None),
     }
 
@@ -278,7 +321,8 @@ def recentes(filtros=None, hoje=None):
             ultimas[k] = c
         elif k not in anteriores and c.data_referencia < ultimas[k].data_referencia:
             anteriores[k] = c
-    itens = [serializar(c, anteriores.get(k), hoje) for k, c in ultimas.items()]
+    fontes = {f.slug: f for f in FonteCotacao.query.all()}
+    itens = [serializar(c, anteriores.get(k), hoje, fontes.get(c.origem)) for k, c in ultimas.items()]
     if filtros.get("categoria"):
         itens = [i for i in itens if i["categoria"] == filtros["categoria"]]
     return sorted(itens, key=lambda i: (i["categoria_rotulo"], i["produto"], i["praca"]))
@@ -310,6 +354,29 @@ def historico(chave, dias=90, hoje=None):
     return resultado
 
 
+SEM_FONTE = {
+    "pecuaria": "O CEPEA/ESALQ publica boi gordo e bezerro sob licença CC BY-NC 4.0 (uso não comercial). A integração "
+                "está pronta, mas desativada até haver autorização do CEPEA para uso nesta plataforma.",
+    "leite": "Não há fonte pública e liberada de preço do leite conectada.",
+    "graos": "A CONAB publica preços de grãos, mas o portal de dados dela apresenta certificado HTTPS inválido, e os "
+             "indicadores do CEPEA exigem autorização para uso comercial. Nenhuma fonte automática está ativa.",
+    "cafe_acucar": "Os indicadores do CEPEA exigem autorização para uso comercial, e as bolsas exigem licença.",
+    "proteinas": "Não há fonte pública e liberada de suínos e frango conectada.",
+    "insumos": "Não há fonte pública e liberada de fertilizantes e insumos conectada.",
+    "moedas": "O Banco Central ainda não respondeu. Tente atualizar em instantes.",
+}
+
+
+def mensagem_sem_dados(filtros):
+    cat = (filtros or {}).get("categoria")
+    if cat in SEM_FONTE:
+        extra = "" if cat == "moedas" else " O administrador pode registrar cotações com fonte e data."
+        return f"Nenhuma cotação de {rotulo_categoria(cat).lower()} disponível. {SEM_FONTE[cat]}{extra}"
+    if filtros:
+        return "Nenhuma cotação encontrada para estes filtros."
+    return "Nenhuma cotação disponível ainda. As fontes automáticas aparecem assim que responderem."
+
+
 def estado_fontes():
     ativas = fontes_ativas()
     out = []
@@ -318,6 +385,10 @@ def estado_fontes():
         out.append({"slug": slug, "nome": FONTES[slug]["nome"], "ativa": slug in ativas,
                     "frequencia_fonte": FONTES[slug]["frequencia"], "intervalo_coleta_min": INTERVALOS[slug],
                     "ultimo_sucesso": (f.ultimo_sucesso.isoformat(timespec="seconds") + "Z") if f and f.ultimo_sucesso else None,
+                    "ultimo_sucesso_br": _br(f.ultimo_sucesso) if f else None,
+                    "ultima_tentativa_br": _br(f.ultima_tentativa) if f else None,
+                    "observacao": ("Licença CC BY-NC 4.0: uso comercial depende de autorização do CEPEA."
+                                   if slug == "cepea" else None),
                     "ultimo_erro": f.ultimo_erro if f else None,
                     "estado": ("desativada" if slug not in ativas else
                                "indisponivel" if f and f.ultimo_erro else

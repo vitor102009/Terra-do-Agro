@@ -39,8 +39,10 @@ def _filtros():
 @bp.route("/cotacoes")
 @login_required
 def cotacoes():
+    servico_cotacoes.atualizar_vencidas()  # primeira visita já coleta (respeitando o intervalo de cada fonte)
     itens = servico_cotacoes.recentes(_filtros())
     return render_template("clima/cotacoes.html", itens=itens, filtros=_filtros(),
+                           mensagem_vazia=servico_cotacoes.mensagem_sem_dados(_filtros()),
                            categorias={k: v[0] for k, v in servico_cotacoes.CATEGORIAS.items()},
                            fontes=servico_cotacoes.estado_fontes(), intervalo_tela=3)
 
@@ -49,9 +51,10 @@ def cotacoes():
 @login_required
 def cotacoes_dados():
     # Coleta somente as fontes cujo intervalo mínimo venceu; nas demais chamadas, só lê o banco.
-    servico_cotacoes.atualizar_vencidas()
+    servico_cotacoes.atualizar_vencidas(forcar=request.args.get("forcar") == "1")
     itens = servico_cotacoes.recentes(_filtros())
-    corpo = {"itens": itens, "fontes": servico_cotacoes.estado_fontes()}
+    corpo = {"itens": itens, "fontes": servico_cotacoes.estado_fontes(),
+             "mensagem_vazia": servico_cotacoes.mensagem_sem_dados(_filtros())}
     corpo["versao"] = hashlib.sha1(json.dumps(corpo, sort_keys=True, default=str).encode()).hexdigest()[:16]
     corpo["consultado_em"] = utcnow().isoformat(timespec="seconds") + "Z"
     resp = jsonify(corpo)

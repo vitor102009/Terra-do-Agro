@@ -32,18 +32,20 @@
     nome.appendChild(el("h3", "quote-name", c.produto));
     nome.appendChild(el("span", "badge text-bg-light", c.categoria_rotulo));
     topo.appendChild(nome);
-    topo.appendChild(el("span", "badge " + (c.estado === "atualizada" ? "text-bg-success" : "text-bg-warning"), c.estado));
+    topo.appendChild(el("span", "badge " + (c.estado === "atualizada" ? "text-bg-success" : "text-bg-warning"),
+      c.estado === "atualizada" ? "Atualizada" : "Desatualizada"));
     art.appendChild(topo);
     art.appendChild(el("div", "quote-value", "R$ " + fmt(c.valor, c.casas)));
     art.appendChild(el("div", "small text-muted", c.unidade));
+    if (c.motivo_estado) art.appendChild(el("div", "small text-warning-emphasis", c.motivo_estado));
     var v = el("div", "quote-var");
     if (c.variacao !== null) {
       v.classList.add(c.variacao > 0 ? "up" : c.variacao < 0 ? "down" : "eq");
       var s = c.variacao > 0 ? "+" : "";
       v.textContent = s + fmt(c.variacao, c.casas) + " (" + (c.variacao_pct > 0 ? "+" : "") + fmt(c.variacao_pct, 2) +
-        "%) vs " + c.comparado_com.data_referencia;
+        "%) em relação a " + c.comparado_com.data_br;
     } else {
-      v.textContent = "Sem valor anterior comparável";
+      v.textContent = "Variação indisponível: não há valor de um dia anterior comparável";
     }
     art.appendChild(v);
     var dl = el("dl", "quote-meta");
@@ -51,6 +53,7 @@
     par("Praça", el("dd", null, c.praca));
     par(c.publicado_br ? "Publicado" : "Referência",
         el("dd", null, c.publicado_br ? c.publicado_br + " (" + c.fuso_publicacao + ")" : dataBr(c.data_referencia) + " (a fonte não informa horário)"));
+    if (c.consultado_br) par(c.origem !== "manual" ? "Consultado" : "Registrado", el("dd", null, c.consultado_br + " (Brasília)"));
     var dd = el("dd");
     if (c.fonte_url && /^https:\/\//.test(c.fonte_url)) {
       var a = el("a", null, c.fonte);
@@ -80,7 +83,19 @@
       frag.appendChild(card);
     });
     grade.replaceChildren(frag);
-    if (vazio) vazio.hidden = dados.itens.length > 0;
+    if (vazio) {
+      vazio.hidden = dados.itens.length > 0;
+      var t = vazio.querySelector("[data-vazio-texto]");
+      if (t && dados.mensagem_vazia) t.textContent = dados.mensagem_vazia;
+    }
+    var nomes = { ok: "conectada", indisponivel: "indisponível", desativada: "desativada", aguardando: "aguardando primeira coleta" };
+    (dados.fontes || []).forEach(function (f) {
+      var li = document.querySelector('[data-fonte="' + f.slug + '"]');
+      if (!li) return;
+      li.querySelector("[data-fonte-estado]").textContent = nomes[f.estado] || f.estado;
+      li.querySelector("[data-fonte-ultima]").textContent = f.ultimo_sucesso_br ? "Última consulta com sucesso: " + f.ultimo_sucesso_br + " (Brasília)." : "";
+      li.querySelector("[data-fonte-erro]").textContent = f.ultimo_erro || "";
+    });
   }
 
   function status(tipo, texto) {
@@ -88,10 +103,11 @@
     statusTexto.textContent = texto;
   }
 
-  function url() {
+  function url(forcar) {
     var form = document.querySelector("[data-filtros]");
     var params = new URLSearchParams(form ? new FormData(form) : undefined);
     Array.from(params.keys()).forEach(function (k) { if (!params.get(k)) params.delete(k); });
+    if (forcar) params.set("forcar", "1");
     var q = params.toString();
     return app.dataset.url + (q ? "?" + q : "");
   }
@@ -102,10 +118,16 @@
     timer = setTimeout(consultar, ms);
   }
 
-  function consultar() {
+  var btnAtualizar = app.querySelector("[data-atualizar]");
+
+  function consultar(forcar) {
     if (emCurso) return;
     emCurso = true;
-    fetch(url(), { headers: { Accept: "application/json" }, credentials: "same-origin", cache: "no-store" })
+    if (forcar) {
+      btnAtualizar.disabled = true;
+      status("ok", "Consultando as fontes…");
+    }
+    fetch(url(forcar === true), { headers: { Accept: "application/json" }, credentials: "same-origin", cache: "no-store" })
       .then(function (r) {
         if (r.status === 401 || r.redirected) throw new Error("sessao");
         if (!r.ok) throw new Error("http " + r.status);
@@ -130,7 +152,7 @@
           (ultimoOk ? " (" + hora(ultimoOk) + ")" : "") + ". Nova tentativa em " + Math.round(espera / 1000) + " s.");
         agendar(espera);
       })
-      .finally(function () { emCurso = false; });
+      .finally(function () { emCurso = false; btnAtualizar.disabled = false; });
   }
 
   document.addEventListener("visibilitychange", function () {
@@ -141,8 +163,8 @@
       consultar();
     }
   });
-  window.addEventListener("online", consultar);
-  app.querySelector("[data-atualizar]").addEventListener("click", function () { clearTimeout(timer); consultar(); });
+  window.addEventListener("online", function () { consultar(); });
+  btnAtualizar.addEventListener("click", function () { clearTimeout(timer); versao = null; consultar(true); });
   var form = document.querySelector("[data-filtros]");
   if (form) form.addEventListener("submit", function (ev) {
     ev.preventDefault();

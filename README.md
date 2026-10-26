@@ -161,15 +161,17 @@ Como funciona:
 ferramentas no servidor, somente a propriedade ativa e as permissões do usuário (financeiro só para quem tem
 permissão; anúncios só os próprios). Endereço, coordenadas, e-mail e telefone não são enviados ao provedor. Ela não
 publica anúncios, não envia mensagens e não faz pagamentos. Histórico por usuário; limites de 5 perguntas/minuto, 40/dia e 400 mil tokens/dia por usuário, resposta de até
-4096 tokens e no máximo 150 s por pergunta (tudo ajustável no `.env`). `flask --app app ia-verificar` valida a chave com
-uma chamada autenticada sem custo de tokens e sem exibir a chave. Sem `ANTHROPIC_API_KEY`, a tela mostra que a IA não está configurada. Voz: ditado e leitura em voz alta pelas
+4096 tokens e no máximo 150 s por pergunta (tudo ajustável no `.env`). `flask --app app ia-verificar` envia uma mensagem
+mínima (alguns tokens) para confirmar chave, créditos e cobrança, sem exibir a chave; `--sem-mensagem` só valida a chave. Sem `ANTHROPIC_API_KEY`, a tela mostra que a IA não está configurada. Voz: ditado e leitura em voz alta pelas
 APIs do próprio navegador, exibidos apenas quando o navegador oferece suporte. O teste com o provedor real é
 `RUN_REAL_AI=1 python -m pytest tests/test_ia_real.py` (gera custo).
 
 **Cotações** (`/cotacoes`): a tela consulta o servidor a cada 3 s; o servidor consulta cada fonte no máximo uma vez por
 intervalo (BCB: 15 min) e guarda o resultado. O preço só muda quando a fonte publica. Fontes: Banco Central (PTAX
-dólar e euro, horário publicado pelo BCB), CEPEA (desativado por padrão, aguardando confirmação dos termos de uso) e
-registros do administrador. Bolsas (B3, CBOT, ICE) exigem licença e não estão conectadas.
+dólar e euro, compra e venda, horário publicado pelo BCB); CEPEA desativado (licença CC BY-NC 4.0: uso comercial
+exige autorização do CEPEA); CONAB não integrada (o portal de dados apresenta certificado HTTPS inválido); e registros
+do administrador. "Atualizar agora" consulta as fontes no máximo uma vez por minuto. Teste real (gratuito):
+`RUN_REAL_QUOTES=1 python -m pytest tests/test_cotacoes_real.py`. Bolsas (B3, CBOT, ICE) exigem licença e não estão conectadas.
 
 ## 10. Limitações conhecidas e próximos passos
 

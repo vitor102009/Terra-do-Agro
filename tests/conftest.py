@@ -108,3 +108,14 @@ def arquivo(conteudo, nome):
 
 def hoje():
     return date.today().isoformat()
+
+
+@pytest.fixture(autouse=True)
+def _ia_isolada():
+    """Nenhum teste herda a validação ou o cliente da IA de outro teste (nem a chave real do .env)."""
+    from app.services import ia_agro
+    ia_agro._status.update(estado=None, detalhe=None, em=None)
+    ia_agro._cliente = None
+    yield
+    ia_agro._status.update(estado=None, detalhe=None, em=None)
+    ia_agro._cliente = None

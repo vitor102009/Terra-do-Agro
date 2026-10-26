@@ -4,17 +4,19 @@
 <article class="quote-card" data-chave="{{ c.chave }}">
   <div class="d-flex justify-content-between align-items-start gap-2">
     <div><h3 class="quote-name">{{ c.produto }}</h3><span class="badge text-bg-light">{{ c.categoria_rotulo }}</span></div>
-    <span class="badge {{ 'text-bg-success' if c.estado == 'atualizada' else 'text-bg-warning' }}">{{ c.estado }}</span>
+    <span class="badge {{ 'text-bg-success' if c.estado == 'atualizada' else 'text-bg-warning' }}">{{ 'Atualizada' if c.estado == 'atualizada' else 'Desatualizada' }}</span>
   </div>
   <div class="quote-value">R$ {{ c.valor|numero(c.casas) }}</div>
   <div class="small text-muted">{{ c.unidade }}</div>
+  {% if c.motivo_estado %}<div class="small text-warning-emphasis">{{ c.motivo_estado }}</div>{% endif %}
   <div class="quote-var {% if c.variacao is not none %}{{ 'up' if c.variacao > 0 else 'down' if c.variacao < 0 else '' }}{% endif %}">
-    {% if c.variacao is not none %}{{ '+' if c.variacao > 0 else '' }}{{ c.variacao|numero(c.casas) }} ({{ '+' if c.variacao_pct > 0 else '' }}{{ c.variacao_pct|numero(2) }}%) vs {{ c.comparado_com.data_referencia }}
-    {% else %}Sem valor anterior comparável{% endif %}
+    {% if c.variacao is not none %}{{ '+' if c.variacao > 0 else '' }}{{ c.variacao|numero(c.casas) }} ({{ '+' if c.variacao_pct > 0 else '' }}{{ c.variacao_pct|numero(2) }}%) em relação a {{ c.comparado_com.data_br }}
+    {% else %}Variação indisponível: não há valor de um dia anterior comparável{% endif %}
   </div>
   <dl class="quote-meta">
     <dt>Praça</dt><dd>{{ c.praca }}</dd>
     <dt>{{ 'Publicado' if c.publicado_br else 'Referência' }}</dt><dd>{{ c.publicado_br ~ ' (' ~ c.fuso_publicacao ~ ')' if c.publicado_br else c.data_br ~ ' (a fonte não informa horário)' }}</dd>
+    {% if c.consultado_br %}<dt>{{ 'Consultado' if c.origem != 'manual' else 'Registrado' }}</dt><dd>{{ c.consultado_br }} (Brasília)</dd>{% endif %}
     <dt>Fonte</dt><dd>{% if c.fonte_url %}<a href="{{ c.fonte_url }}" target="_blank" rel="noopener noreferrer">{{ c.fonte }}</a>{% else %}{{ c.fonte }}{% endif %}</dd>
   </dl>
   <button class="btn btn-sm btn-outline-secondary w-100" type="button" data-historico="{{ c.chave }}" data-titulo="{{ c.produto }}"><i class="bi bi-graph-up" aria-hidden="true"></i>Histórico</button>
@@ -51,12 +53,20 @@
 <div class="quote-grid" data-grade>
   {% for c in itens %}{{ card(c) }}{% endfor %}
 </div>
-<div class="card" data-vazio {% if itens %}hidden{% endif %}>{{ m.empty('bi-graph-up-arrow', 'Nenhuma cotação disponível', 'Não há cotação para estes filtros. As fontes automáticas aparecem quando respondem; outras cotações são registradas pelo administrador a partir de fontes identificadas.') }}</div>
+<div class="card" data-vazio {% if itens %}hidden{% endif %}><div class="card-body text-center py-4">
+  <i class="bi bi-graph-up-arrow fs-2 text-muted" aria-hidden="true"></i>
+  <p class="mb-0 mt-2" data-vazio-texto>{{ mensagem_vazia }}</p>
+</div></div>
 
 <section class="card mt-3" aria-labelledby="fontes-titulo">
   <div class="card-header"><h2 id="fontes-titulo">Fontes</h2></div>
   <ul class="list-group list-group-flush small" data-fontes>
-    {% for f in fontes %}<li class="list-group-item"><strong>{{ f.nome }}</strong> — {{ {'ok': 'conectada', 'indisponivel': 'indisponível', 'desativada': 'desativada', 'aguardando': 'aguardando primeira coleta'}[f.estado] }}. Publicação: {{ f.frequencia_fonte }}. Coleta no máximo a cada {{ f.intervalo_coleta_min }} min.{% if f.ultimo_erro %} <span class="text-danger">{{ f.ultimo_erro }}</span>{% endif %}</li>{% endfor %}
+    {% for f in fontes %}<li class="list-group-item" data-fonte="{{ f.slug }}"><strong>{{ f.nome }}</strong> — <span data-fonte-estado>{{ {'ok': 'conectada', 'indisponivel': 'indisponível', 'desativada': 'desativada', 'aguardando': 'aguardando primeira coleta'}[f.estado] }}</span>.
+      Publicação: {{ f.frequencia_fonte }}. Coleta no máximo a cada {{ f.intervalo_coleta_min }} min.
+      <span data-fonte-ultima>{% if f.ultimo_sucesso_br %}Última consulta com sucesso: {{ f.ultimo_sucesso_br }} (Brasília).{% endif %}</span>
+      <span class="text-danger" data-fonte-erro>{{ f.ultimo_erro or '' }}</span>
+      {% if f.observacao %}<span class="d-block text-muted">{{ f.observacao }}</span>{% endif %}</li>{% endfor %}
+    <li class="list-group-item">CONAB: o portal de dados de preços apresenta certificado HTTPS inválido; a integração só será feita com conexão segura.</li>
     <li class="list-group-item">Bolsas (B3, CBOT, ICE) e demais indicadores dependem de licença ou assinatura e não estão conectados. Cotações de outras fontes podem ser registradas pelo administrador com fonte e data.</li>
   </ul>
 </section>

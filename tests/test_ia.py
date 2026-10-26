@@ -23,6 +23,14 @@ class FakeProvedor:
         self.validacao = validacao  # exceção a levantar na validação da chave (models.retrieve)
         self.beta = SimpleNamespace(messages=SimpleNamespace(create=self._create))
         self.models = SimpleNamespace(retrieve=self._retrieve)
+        self.messages = SimpleNamespace(create=self._mensagem_minima)
+        self.minimas = 0
+
+    def _mensagem_minima(self, **_kw):
+        self.minimas += 1
+        if self.validacao:
+            raise self.validacao
+        return texto("ok")
 
     def with_options(self, **_kw):
         return self
@@ -398,3 +406,20 @@ def test_usuario_sem_propriedade_recebe_orientacao(app, client, ia):
     fake = ia([ferramenta("resumo_propriedade", {}), texto("Cadastre uma propriedade.")])
     assert perguntar(client, "Resumo").status_code == 200
     assert "Nenhuma propriedade ativa" in resultados_de_ferramenta(fake.requisicoes[1])[0]["erro"]
+
+
+def test_verificacao_com_mensagem_detecta_falta_de_creditos_e_libera_depois(app, client, produtor, ia):
+    sem_credito = anthropic.BadRequestError("Your credit balance is too low to access the Anthropic API.",
+                                            response=httpx2.Response(400, request=_req()), body=None)
+    fake = ia([], validacao=sem_credito)
+    r = app.test_cli_runner().invoke(args=["ia-verificar"])
+    assert r.exit_code == 1 and "sem_creditos" in r.output and "chave-ficticia" not in r.output
+    assert fake.minimas == 1
+    # Com a chave válida mas sem créditos, a página não pode dizer que a IA está disponível
+    assert "temporariamente indisponível" in client.get("/ia/").get_data(as_text=True)
+    assert perguntar(client, "Oi").status_code == 503
+    # Créditos adicionados: a revalidação (forçada) envia mensagem mínima e libera a IA
+    fake.validacao = None
+    fake.roteiro.append(texto("Funcionando."))
+    assert ia_agro.status(forcar=True)["estado"] == "ok"
+    assert perguntar(client, "Oi").status_code == 200

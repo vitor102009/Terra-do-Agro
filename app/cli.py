@@ -209,17 +209,28 @@ def registrar_cli(app):
         ativas = servico.fontes_ativas()
         if not ativas:
             click.echo("Nenhuma fonte automática ativa.")
+        from app.models import FonteCotacao
+
         for slug in ativas:
+            antes = db.session.get(FonteCotacao, slug)
+            tentativa_anterior = antes.ultima_tentativa if antes else None
             n = servico.coletar(slug, forcar=forcar)
-            click.echo(f"{slug}: " + ("intervalo mínimo ainda não passou" if n is None and not forcar else
-                                      "falha (veja o log)" if n is None else f"{n} cotação(ões) nova(s)"))
+            fonte = db.session.get(FonteCotacao, slug)
+            if n is not None:
+                click.echo(f"{slug}: {n} cotação(ões) nova(s)")
+            elif fonte and fonte.ultima_tentativa != tentativa_anterior and fonte.ultimo_erro:
+                click.echo(f"{slug}: falha - {fonte.ultimo_erro}")
+            else:
+                click.echo(f"{slug}: intervalo mínimo entre consultas ainda não passou (nenhuma consulta feita)")
 
     @app.cli.command("ia-verificar")
-    def ia_verificar():
-        """Valida a ANTHROPIC_API_KEY com uma chamada autenticada sem custo de tokens (não exibe a chave)."""
+    @click.option("--sem-mensagem", is_flag=True, help="Só valida a chave (não detecta falta de créditos).")
+    def ia_verificar(sem_mensagem):
+        """Valida a integração com a Anthropic sem exibir a chave. Por padrão envia uma mensagem mínima
+        (alguns tokens) para confirmar também créditos e cobrança da conta da API."""
         from app.services import ia_agro
 
-        st = ia_agro.status(forcar=True)
+        st = ia_agro.status(forcar=True, com_mensagem=not sem_mensagem)
         click.echo(f"IA Agro: {st['estado']} - {st['motivo']} (modelo: {current_app.config['AI_MODEL']})")
         if st["estado"] != "ok":
             raise SystemExit(1)

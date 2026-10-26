@@ -242,7 +242,7 @@ def t_meus_anuncios(ctx):
 
 def _cot_resumo(c):
     return {k: c[k] for k in ("chave", "produto", "categoria", "praca", "uf", "valor", "unidade", "moeda", "fonte",
-                              "data_referencia", "publicado_em", "fuso_publicacao", "estado", "variacao", "variacao_pct",
+                              "data_referencia", "publicado_em", "fuso_publicacao", "consultado_br", "estado", "motivo_estado", "variacao", "variacao_pct",
                               "comparado_com")}
 
 
@@ -384,20 +384,27 @@ def _registrar_status(estado, detalhe=None):
     _status.update(estado=estado, detalhe=detalhe, em=time.monotonic())
 
 
-def status(forcar=False):
-    """Valida de verdade a chave com uma chamada autenticada sem custo de tokens (consulta do modelo).
+def status(forcar=False, com_mensagem=False):
+    """Valida de verdade a integração e retorna {"estado", "motivo"} (o valor da chave nunca é incluído).
 
-    Retorna {"estado", "motivo"}; o valor da chave nunca é incluído.
+    Padrão: consulta do modelo (autenticada, sem custo de tokens). Ela NÃO detecta falta de créditos; por isso, depois
+    de um "sem_creditos", e com com_mensagem=True (comando `flask ia-verificar`), envia uma mensagem mínima.
     """
     import anthropic
 
     if not configurada():
         return {"estado": "sem_chave", "motivo": MOTIVOS["sem_chave"]}
-    validade = 600 if _status["estado"] == "ok" else 120
+    validade = 600 if _status["estado"] in ("ok", "sem_creditos") else 120
     if not forcar and _status["em"] and time.monotonic() - _status["em"] < validade:
         return {"estado": _status["estado"], "motivo": MOTIVOS[_status["estado"]]}
+    com_mensagem = com_mensagem or _status["estado"] == "sem_creditos"
     try:
-        cliente().with_options(timeout=8, max_retries=0).models.retrieve(current_app.config["AI_MODEL"])
+        c = cliente().with_options(timeout=20, max_retries=0)
+        if com_mensagem:
+            c.messages.create(model=current_app.config["AI_MODEL"], max_tokens=16, output_config={"effort": "low"},
+                              messages=[{"role": "user", "content": "Responda apenas: ok"}])
+        else:
+            c.models.retrieve(current_app.config["AI_MODEL"])
         _registrar_status("ok")
     except anthropic.AuthenticationError:
         _registrar_status("chave_invalida")
@@ -407,6 +414,11 @@ def status(forcar=False):
         _registrar_status("modelo_indisponivel")
     except anthropic.RateLimitError:
         _registrar_status("limite")
+    except anthropic.BadRequestError as exc:
+        texto = str(getattr(exc, "message", "") or "").lower()
+        _registrar_status("sem_creditos" if "credit" in texto or "billing" in texto else "erro_provedor")
+        if _status["estado"] == "erro_provedor":
+            current_app.logger.error("IA Agro: validação recusada pelo provedor: %s", texto[:300])
     except (anthropic.APIConnectionError, anthropic.APITimeoutError):
         _registrar_status("sem_conexao")
     except anthropic.APIStatusError as exc:
@@ -527,6 +539,8 @@ def responder(conversa, pergunta, ctx, pergunta_id=None):
         resp = _chamar(msgs, timeout=min(cfg["AI_TIMEOUT_SECONDS"], restante))
         uso["entrada"] += getattr(resp.usage, "input_tokens", 0) or 0
         uso["saida"] += getattr(resp.usage, "output_tokens", 0) or 0
+        if _status["estado"] != "ok":
+            _registrar_status("ok")
         if resp.stop_reason == "refusal":
             return "Não posso ajudar com esse pedido. Posso ajudar com manejo, gestão e dados da sua propriedade.", usadas, uso
         if resp.stop_reason != "tool_use":
