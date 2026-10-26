@@ -1,13 +1,27 @@
-from flask import Blueprint, abort, current_app, g, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, abort, current_app, flash, g, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app.extensions import db
 from app.models import ConversaIA, MensagemIA, utcnow
 from app.services import ia_agro
+from app.utils.acesso import admin_required
 
 bp = Blueprint("ia", __name__)
 
 MAX_PERGUNTA = 2000
+# Estados em que nenhuma pergunta pode dar certo: o envio fica bloqueado até o administrador corrigir.
+BLOQUEANTES = {"sem_chave", "chave_invalida", "sem_permissao", "modelo_indisponivel", "sem_creditos"}
+
+
+def _aviso(st):
+    """Mensagem do estado da integração: detalhada para administradores, genérica para os demais."""
+    if st["estado"] == "ok":
+        return None
+    if current_user.is_admin:
+        return st["motivo"]
+    if st["estado"] == "sem_chave":
+        return "A IA Agro ainda não está disponível neste servidor."
+    return "A IA Agro está temporariamente indisponível. Tente novamente mais tarde."
 
 
 def _conversa(cid):
@@ -35,9 +49,12 @@ def index(cid=None):
     conversas = (ConversaIA.query.filter_by(user_id=current_user.id)
                  .order_by(ConversaIA.updated_at.desc()).limit(50).all())
     atual = _conversa(cid) if cid else None
+    st = ia_agro.status()
     return render_template("ia/index.html", conversas=conversas, atual=atual,
                            mensagens=[_msg(m) for m in atual.mensagens] if atual else [],
-                           configurada=ia_agro.configurada(), limite_dia=current_app.config["AI_DAILY_LIMIT"],
+                           estado=st["estado"], aviso=_aviso(st), bloqueada=st["estado"] in BLOQUEANTES,
+                           limite_dia=current_app.config["AI_DAILY_LIMIT"],
+                           restantes=ia_agro.perguntas_restantes(current_user.id),
                            outra_propriedade=bool(atual and atual.propriedade_id and g.get("propriedade")
                                                   and atual.propriedade_id != g.propriedade.id))
 
@@ -51,8 +68,9 @@ def perguntar():
         return jsonify(erro="Escreva uma pergunta."), 400
     if len(pergunta) > MAX_PERGUNTA:
         return jsonify(erro=f"A pergunta deve ter no máximo {MAX_PERGUNTA} caracteres."), 400
-    if not ia_agro.configurada():
-        return jsonify(erro="A IA Agro ainda não foi configurada neste servidor."), 503
+    st = ia_agro.status()
+    if st["estado"] in BLOQUEANTES:
+        return jsonify(erro=_aviso(st), estado=st["estado"]), 503
     prop = g.get("propriedade")
     cid = dados.get("conversa_id")
     if cid:
@@ -97,7 +115,16 @@ def perguntar():
     conv.updated_at = utcnow()
     db.session.add(resposta)
     db.session.commit()
-    return jsonify(conversa_id=conv.id, url=url_for("ia.index", cid=conv.id), mensagem=_msg(resposta)), status
+    return jsonify(conversa_id=conv.id, url=url_for("ia.index", cid=conv.id), mensagem=_msg(resposta),
+                   restantes=ia_agro.perguntas_restantes(current_user.id)), status
+
+
+@bp.route("/verificar", methods=["POST"])
+@admin_required
+def verificar():
+    st = ia_agro.status(forcar=True)
+    flash(st["motivo"], "success" if st["estado"] == "ok" else "warning")
+    return redirect(url_for("ia.index"))
 
 
 @bp.route("/conversa/<int:cid>/excluir", methods=["POST"])

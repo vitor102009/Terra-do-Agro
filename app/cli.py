@@ -214,6 +214,16 @@ def registrar_cli(app):
             click.echo(f"{slug}: " + ("intervalo mínimo ainda não passou" if n is None and not forcar else
                                       "falha (veja o log)" if n is None else f"{n} cotação(ões) nova(s)"))
 
+    @app.cli.command("ia-verificar")
+    def ia_verificar():
+        """Valida a ANTHROPIC_API_KEY com uma chamada autenticada sem custo de tokens (não exibe a chave)."""
+        from app.services import ia_agro
+
+        st = ia_agro.status(forcar=True)
+        click.echo(f"IA Agro: {st['estado']} - {st['motivo']} (modelo: {current_app.config['AI_MODEL']})")
+        if st["estado"] != "ok":
+            raise SystemExit(1)
+
     @app.cli.command("limpar-registros")
     @click.option("--dias", default=90, show_default=True)
     def limpar(dias):

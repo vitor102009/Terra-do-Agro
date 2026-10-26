@@ -17,10 +17,20 @@ from tests.conftest import adicionar_membro, criar_propriedade, criar_usuario, l
 class FakeProvedor:
     """Responde com uma sequência roteirizada e guarda as requisições recebidas."""
 
-    def __init__(self, roteiro):
+    def __init__(self, roteiro, validacao=None):
         self.roteiro = list(roteiro)
         self.requisicoes = []
+        self.validacao = validacao  # exceção a levantar na validação da chave (models.retrieve)
         self.beta = SimpleNamespace(messages=SimpleNamespace(create=self._create))
+        self.models = SimpleNamespace(retrieve=self._retrieve)
+
+    def with_options(self, **_kw):
+        return self
+
+    def _retrieve(self, model):
+        if self.validacao:
+            raise self.validacao
+        return SimpleNamespace(id=model)
 
     def _create(self, **kw):
         self.requisicoes.append(json.loads(json.dumps(kw, default=lambda o: getattr(o, "__dict__", str(o)))))
@@ -45,12 +55,19 @@ def resultados_de_ferramenta(req):
     return [json.loads(b["content"]) for b in ultimo["content"] if b.get("type") == "tool_result"]
 
 
+@pytest.fixture(autouse=True)
+def _estado_limpo():
+    ia_agro._status.update(estado=None, detalhe=None, em=None)
+    yield
+    ia_agro._status.update(estado=None, detalhe=None, em=None)
+
+
 @pytest.fixture()
 def ia(app, monkeypatch):
     app.config["ANTHROPIC_API_KEY"] = "chave-ficticia-de-teste"
 
-    def instalar(roteiro):
-        fake = FakeProvedor(roteiro)
+    def instalar(roteiro, validacao=None):
+        fake = FakeProvedor(roteiro, validacao)
         monkeypatch.setattr(ia_agro, "cliente", lambda: fake)
         return fake
     return instalar
@@ -68,10 +85,63 @@ def _animal(prop, brinco, peso=None):
     return a
 
 
-def test_sem_chave_mostra_aviso_e_nao_chama_provedor(app, client, produtor):
+def _req():
+    return httpx2.Request("POST", "https://api.anthropic.com/v1/messages")
+
+
+def test_sem_chave_aviso_generico_para_usuario_e_detalhado_para_admin(app, client, produtor):
     pagina = client.get("/ia/").get_data(as_text=True)
-    assert "ANTHROPIC_API_KEY" in pagina and "chave-ficticia" not in pagina
+    assert "ainda não está disponível" in pagina and "ANTHROPIC_API_KEY" not in pagina
+    assert 'id="ia-pergunta"' in pagina and "disabled" in pagina
     assert perguntar(client, "Oi").status_code == 503
+    logout(client)
+    criar_usuario(email="adm@teste.com", admin=True)
+    login(client, "adm@teste.com")
+    pagina = client.get("/ia/").get_data(as_text=True)
+    assert "ANTHROPIC_API_KEY" in pagina and "Verificar configuração agora" in pagina
+
+
+def test_chave_invalida_bloqueia_envio_sem_expor_a_chave(app, client, produtor, ia):
+    fake = ia([texto("nunca chamado")], validacao=anthropic.AuthenticationError(
+        "invalid x-api-key", response=httpx2.Response(401, request=_req()), body=None))
+    pagina = client.get("/ia/").get_data(as_text=True)
+    assert "temporariamente indisponível" in pagina and "chave-ficticia" not in pagina
+    r = perguntar(client, "Oi")
+    assert r.status_code == 503 and r.get_json()["estado"] == "chave_invalida"
+    assert fake.requisicoes == []  # nenhuma pergunta enviada ao provedor
+
+
+def test_chave_validada_remove_aviso(app, client, produtor, ia):
+    ia([])
+    pagina = client.get("/ia/").get_data(as_text=True)
+    assert "indisponível" not in pagina and "ainda não está" not in pagina
+    assert 'data-restantes>40<' in pagina
+
+
+def test_sem_creditos_detectado_na_pergunta_e_mostrado_ao_admin(app, client, ia):
+    criar_usuario(email="adm@teste.com", admin=True)
+    login(client, "adm@teste.com")
+    ia([anthropic.BadRequestError("Your credit balance is too low to access the Anthropic API.",
+                                  response=httpx2.Response(400, request=_req()), body=None)])
+    r = perguntar(client, "Oi")
+    assert r.status_code == 502 and "temporariamente indisponível" in r.get_json()["mensagem"]["texto"]
+    assert "sem créditos" in client.get("/ia/").get_data(as_text=True)
+    r = perguntar(client, "Oi de novo")
+    assert r.status_code == 503 and r.get_json()["estado"] == "sem_creditos"
+
+
+def test_nova_conversa_e_independente_e_saldo_diminui(app, client, produtor, ia):
+    ia([texto("um"), texto("dois")])
+    a = perguntar(client, "Primeira").get_json()
+    b = perguntar(client, "Outra conversa").get_json()
+    assert a["conversa_id"] != b["conversa_id"]
+    assert b["restantes"] == a["restantes"] - 1 == 38
+    assert [c.titulo for c in ConversaIA.query.order_by(ConversaIA.id)] == ["Primeira", "Outra conversa"]
+
+
+def test_cli_ia_verificar_sem_chave(app):
+    r = app.test_cli_runner().invoke(args=["ia-verificar"])
+    assert r.exit_code == 1 and "sem_chave" in r.output
 
 
 def test_pergunta_resposta_e_historico(app, client, produtor, ia):
@@ -173,13 +243,14 @@ def test_limite_por_minuto(app, client, produtor, ia):
 
 
 def test_falhas_do_provedor_viram_mensagens_amigaveis(app, client, produtor, ia):
-    req = httpx2.Request("POST", "https://api.anthropic.com/v1/messages")
+    req = _req()
     ia([anthropic.APIConnectionError(request=req)])
     r = perguntar(client, "Oi")
     assert r.status_code == 502 and "Sem conexão" in r.get_json()["mensagem"]["texto"]
     ia([anthropic.AuthenticationError("chave inválida", response=httpx2.Response(401, request=req), body=None)])
     r = perguntar(client, "Oi")
     assert r.status_code == 502 and "chave" not in r.get_json()["mensagem"]["texto"].lower()
+    ia_agro._status.update(estado=None, em=None)  # o administrador corrigiu a chave
     ia([texto("x", stop="refusal")])
     assert "Não posso ajudar" in perguntar(client, "?").get_json()["mensagem"]["texto"]
     erros = MensagemIA.query.filter_by(erro=True).count()
@@ -226,3 +297,24 @@ def test_ferramentas_tem_esquema_estrito_valido(app):
         assert t["strict"] is True and s["additionalProperties"] is False
         assert set(s["required"]) == set(s["properties"])
         assert t["name"] in ia_agro.EXECUTORES
+
+
+def test_custos_e_estoque_respeitam_permissao_financeira(app, client, ia):
+    from app.services.estoque import registrar_entrada
+    from app.models import Insumo
+    dono = criar_usuario(email="dono2@teste.com")
+    prop = criar_propriedade(dono)
+    ins = Insumo(propriedade_id=prop.id, nome="Ração", unidade="kg")
+    db.session.add(ins)
+    db.session.flush()
+    registrar_entrada(ins, Decimal("100"), date.today(), dono.id, custo_unitario=Decimal("2.5"))
+    db.session.commit()
+    operador = criar_usuario(email="op2@teste.com")
+    adicionar_membro(prop, operador, "operador")
+    login(client, "op2@teste.com")
+    fake = ia([ferramenta("estoque", {}, "t1"), ferramenta("custos_producao", {"periodo": "ano"}, "t2"), texto("ok")])
+    perguntar(client, "Estoque e custos?")
+    estoque = resultados_de_ferramenta(fake.requisicoes[1])[0]
+    custos = resultados_de_ferramenta(fake.requisicoes[2])[0]
+    assert estoque["movimentacoes_recentes"][0]["insumo"] == "Ração" and "custo_total" not in estoque["movimentacoes_recentes"][0]
+    assert "permissão" in custos["erro"]

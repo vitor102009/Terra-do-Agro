@@ -17,10 +17,12 @@ from flask import current_app
 
 from app.extensions import db
 from app.models import (
-    Animal, Anuncio, ConversaIA, EventoReprodutivo, EventoSanitario, Insumo, Lote, MensagemIA, Pesagem, utcnow,
+    Animal, Anuncio, ConversaIA, EventoReprodutivo, EventoSanitario, Insumo, Lote, MensagemIA, MovimentacaoInsumo, Pesagem,
+    utcnow,
 )
 from app.models.propriedade import PAPEIS_PROPRIEDADE
 from app.services import cotacoes as servico_cotacoes
+from app.services import custos as servico_custos
 from app.services import indicadores
 
 ARROBA_KG = Decimal("15")  # arroba de carcaça
@@ -58,6 +60,9 @@ class Contexto:
 
 class IAIndisponivel(Exception):
     """Falha com mensagem segura para o usuário."""
+
+
+INDISPONIVEL = "A IA Agro está temporariamente indisponível. O administrador foi avisado pelo registro do servidor."
 
 
 class LimiteExcedido(Exception):
@@ -169,7 +174,32 @@ def t_estoque(ctx):
                          "minimo": _f(i.quantidade_minima, 3), "custo_medio_unitario": _f(i.custo_medio, 4),
                          "validade": i.validade.isoformat() if i.validade else None,
                          "abaixo_do_minimo": bool(i.quantidade_minima and i.quantidade <= i.quantidade_minima)} for i in itens],
+            "movimentacoes_recentes": [
+                {"insumo": m.insumo.nome, "tipo": m.tipo, "quantidade": _f(m.quantidade, 3), "data": m.data.isoformat(),
+                 # custo das movimentações é dado financeiro: só para quem tem a permissão
+                 **({"custo_total": _f(m.custo_total)} if "financeiro" in ctx.perms else {})}
+                for m in (MovimentacaoInsumo.query.join(Insumo).filter(Insumo.propriedade_id == ctx.pid)
+                          .order_by(MovimentacaoInsumo.data.desc(), MovimentacaoInsumo.id.desc()).limit(20))],
             "criterio": "Custo médio ponderado por unidade."}
+
+
+def t_custos_producao(ctx, periodo="ano"):
+    if not ctx.pid:
+        return _sem_propriedade()
+    if "financeiro" not in ctx.perms:
+        return {"erro": "O usuário não tem permissão para ver custos desta propriedade."}
+    if periodo not in indicadores.PERIODOS:
+        periodo = "ano"
+    inicio, fim = indicadores.periodo(periodo)
+    c = servico_custos.calcular(ctx.pid, inicio, fim)
+    return {"periodo": {"inicio": inicio.isoformat(), "fim": fim.isoformat()},
+            "custo_total": _f(c["total_geral"]), "animais_ativos": c["total_animais"],
+            "custo_medio_por_cabeca": _f(c["custo_medio_cabeca"]),
+            "por_lote": [{"lote": l["lote"], "animais": l["animais"], "total": _f(l["total"]), "por_cabeca": _f(l["por_cabeca"])}
+                         for l in c["lotes"]],
+            "despesas_consideradas": c["qtd_despesas"], "consumos_de_estoque": c["qtd_consumos"],
+            "criterios": ("Despesas de categorias marcadas como custo + consumo de estoque valorizado pelo custo médio "
+                          "(compras não entram, para não contar duas vezes). Custos sem lote são rateados por animais ativos.")}
 
 
 def t_financeiro(ctx, periodo="mes"):
@@ -287,8 +317,10 @@ TOOLS = [
     _tool("sanidade", "Vacinas e tratamentos vencidos, próximos e últimos registros sanitários.",
           {"dias": {"type": "integer", "description": "Janela de dias à frente para 'próximas' (1 a 180)"}}, ["dias"]),
     _tool("reproducao", "Situação reprodutiva das fêmeas, taxa de prenhez e próximos partos previstos."),
-    _tool("estoque", "Insumos em estoque com quantidade, mínimo, custo médio e validade."),
+    _tool("estoque", "Insumos em estoque (quantidade, mínimo, custo médio, validade) e últimas movimentações."),
     _tool("financeiro", "Receitas, despesas, resultado, caixa, contas em aberto e série de 12 meses. Exige permissão financeira.",
+          {"periodo": {"type": "string", "enum": list(indicadores.PERIODOS)}}, ["periodo"]),
+    _tool("custos_producao", "Custo de produção por lote e por cabeça no período. Exige permissão financeira.",
           {"periodo": {"type": "string", "enum": list(indicadores.PERIODOS)}}, ["periodo"]),
     _tool("meus_anuncios", "Anúncios do próprio usuário no marketplace."),
     _tool("cotacoes", "Cotações mais recentes disponíveis no sistema, com fonte, praça, unidade, data, estado e variação.",
@@ -307,7 +339,7 @@ TOOLS = [
 EXECUTORES = {
     "resumo_propriedade": t_resumo_propriedade, "listar_animais": t_listar_animais, "pesagens_animal": t_pesagens_animal,
     "sanidade": t_sanidade, "reproducao": t_reproducao, "estoque": t_estoque, "financeiro": t_financeiro,
-    "meus_anuncios": t_meus_anuncios, "cotacoes": t_cotacoes, "historico_cotacao": t_historico_cotacao,
+    "custos_producao": t_custos_producao, "meus_anuncios": t_meus_anuncios, "cotacoes": t_cotacoes, "historico_cotacao": t_historico_cotacao,
     "estimar_valor_rebanho": t_estimar_valor_rebanho,
 }
 
@@ -331,6 +363,65 @@ def executar_ferramenta(ctx, nome, entrada):
 
 def configurada():
     return bool(current_app.config.get("ANTHROPIC_API_KEY"))
+
+
+# Resultado da última validação real da chave (por processo). Sucesso vale 10 min; falha, 2 min.
+_status = {"estado": None, "detalhe": None, "em": None}
+MOTIVOS = {
+    "ok": "Integração validada com o provedor.",
+    "sem_chave": "ANTHROPIC_API_KEY não está definida no ambiente do servidor (.env na pasta do projeto).",
+    "chave_invalida": "A chave foi recusada pela Anthropic (inválida ou revogada). Gere outra no Console.",
+    "sem_permissao": "A chave não tem permissão para usar o modelo configurado.",
+    "modelo_indisponivel": "O modelo configurado em AI_MODEL não foi encontrado para esta conta.",
+    "sem_creditos": "A conta da API está sem créditos ou sem cobrança habilitada (Console › Billing).",
+    "sem_conexao": "O servidor não conseguiu se conectar a api.anthropic.com (rede ou lista de sites permitidos).",
+    "limite": "Limite de requisições da conta da API atingido no momento.",
+    "erro_provedor": "O provedor respondeu com erro. Veja o log do servidor.",
+}
+
+
+def _registrar_status(estado, detalhe=None):
+    _status.update(estado=estado, detalhe=detalhe, em=time.monotonic())
+
+
+def status(forcar=False):
+    """Valida de verdade a chave com uma chamada autenticada sem custo de tokens (consulta do modelo).
+
+    Retorna {"estado", "motivo"}; o valor da chave nunca é incluído.
+    """
+    import anthropic
+
+    if not configurada():
+        return {"estado": "sem_chave", "motivo": MOTIVOS["sem_chave"]}
+    validade = 600 if _status["estado"] == "ok" else 120
+    if not forcar and _status["em"] and time.monotonic() - _status["em"] < validade:
+        return {"estado": _status["estado"], "motivo": MOTIVOS[_status["estado"]]}
+    try:
+        cliente().with_options(timeout=8, max_retries=0).models.retrieve(current_app.config["AI_MODEL"])
+        _registrar_status("ok")
+    except anthropic.AuthenticationError:
+        _registrar_status("chave_invalida")
+    except anthropic.PermissionDeniedError:
+        _registrar_status("sem_permissao")
+    except anthropic.NotFoundError:
+        _registrar_status("modelo_indisponivel")
+    except anthropic.RateLimitError:
+        _registrar_status("limite")
+    except (anthropic.APIConnectionError, anthropic.APITimeoutError):
+        _registrar_status("sem_conexao")
+    except anthropic.APIStatusError as exc:
+        current_app.logger.error("IA Agro: validação recebeu erro %s do provedor", exc.status_code)
+        _registrar_status("erro_provedor")
+    if _status["estado"] != "ok":
+        current_app.logger.warning("IA Agro indisponível: %s", MOTIVOS[_status["estado"]])
+    return {"estado": _status["estado"], "motivo": MOTIVOS[_status["estado"]]}
+
+
+def perguntas_restantes(user_id):
+    usadas = (db.session.query(MensagemIA.id).join(ConversaIA)
+              .filter(ConversaIA.user_id == user_id, MensagemIA.papel == "user",
+                      MensagemIA.created_at >= utcnow() - timedelta(days=1)).count())
+    return max(0, current_app.config["AI_DAILY_LIMIT"] - usadas)
 
 
 def verificar_limites(user_id):
@@ -377,20 +468,32 @@ def _chamar(msgs):
             betas=["server-side-fallback-2026-07-01"], fallbacks="default",
         )
     except anthropic.AuthenticationError as exc:
+        _registrar_status("chave_invalida")
         current_app.logger.error("IA Agro: chave da Anthropic inválida ou revogada")
-        raise IAIndisponivel("A IA Agro está temporariamente indisponível (configuração do servidor).") from exc
+        raise IAIndisponivel(INDISPONIVEL) from exc
     except anthropic.PermissionDeniedError as exc:
+        _registrar_status("sem_permissao")
         current_app.logger.error("IA Agro: chave sem permissão para o modelo %s", cfg["AI_MODEL"])
-        raise IAIndisponivel("A IA Agro está temporariamente indisponível (configuração do servidor).") from exc
+        raise IAIndisponivel(INDISPONIVEL) from exc
+    except anthropic.NotFoundError as exc:
+        _registrar_status("modelo_indisponivel")
+        current_app.logger.error("IA Agro: modelo %s não encontrado", cfg["AI_MODEL"])
+        raise IAIndisponivel(INDISPONIVEL) from exc
     except anthropic.RateLimitError as exc:
         current_app.logger.warning("IA Agro: limite de uso do provedor atingido")
         raise IAIndisponivel("A IA Agro está muito requisitada agora. Tente novamente em alguns minutos.") from exc
     except anthropic.BadRequestError as exc:
-        current_app.logger.error("IA Agro: requisição recusada pelo provedor: %s", getattr(exc, "message", exc))
+        mensagem = str(getattr(exc, "message", "") or "")
+        if "credit" in mensagem.lower() or "billing" in mensagem.lower():
+            _registrar_status("sem_creditos")
+            current_app.logger.error("IA Agro: conta da API sem créditos ou sem cobrança habilitada")
+            raise IAIndisponivel(INDISPONIVEL) from exc
+        current_app.logger.error("IA Agro: requisição recusada pelo provedor: %s", mensagem[:300])
         raise IAIndisponivel("Não foi possível processar esta pergunta. Tente reformular ou iniciar uma nova conversa.") from exc
     except anthropic.APITimeoutError as exc:
         raise IAIndisponivel("A IA Agro demorou demais para responder. Tente novamente.") from exc
     except anthropic.APIConnectionError as exc:
+        _registrar_status("sem_conexao")
         current_app.logger.warning("IA Agro: sem conexão com o provedor")
         raise IAIndisponivel("Sem conexão com o serviço de IA no momento. Tente novamente em instantes.") from exc
     except anthropic.APIStatusError as exc:

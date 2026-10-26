@@ -28,13 +28,29 @@
     return d;
   }
 
+  var sintese = window.speechSynthesis || null;
+  var btnParar = form.querySelector("[data-parar]");
+
   function falar(texto) {
-    var ler = form.querySelector("[data-ler]");
-    if (!ler || !ler.checked || !window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
+    if (!sintese) return;
+    sintese.cancel();
     var u = new SpeechSynthesisUtterance(texto);
     u.lang = "pt-BR";
-    window.speechSynthesis.speak(u);
+    u.onend = u.onerror = function () { if (btnParar) btnParar.hidden = true; };
+    if (btnParar) btnParar.hidden = false;
+    sintese.speak(u);
+  }
+
+  function botaoOuvir(bolhaEl) {
+    if (!sintese || bolhaEl.querySelector("[data-ouvir]")) return;
+    var texto = bolhaEl.firstChild && bolhaEl.firstChild.nodeType === 3 ? bolhaEl.firstChild.textContent : bolhaEl.textContent;
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "btn btn-link btn-sm p-0 d-block mt-1";
+    b.dataset.ouvir = "1";
+    b.textContent = "Ouvir resposta";
+    b.addEventListener("click", function () { falar(texto); });
+    bolhaEl.appendChild(b);
   }
 
   function perguntar(texto) {
@@ -43,6 +59,10 @@
     enviar.disabled = true;
     bolha("user", texto);
     var aguardando = bolha("assistant", "Consultando seus dados…");
+    var sp = document.createElement("span");
+    sp.className = "spinner-border spinner-border-sm ms-2";
+    sp.setAttribute("aria-hidden", "true");
+    aguardando.appendChild(sp);
     aguardando.setAttribute("aria-busy", "true");
     fetch(app.dataset.url, {
       method: "POST", credentials: "same-origin",
@@ -54,9 +74,15 @@
       })
       .then(function (d) {
         aguardando.remove();
+        var rest = form.querySelector("[data-restantes]");
+        if (rest && typeof d.restantes === "number") rest.textContent = d.restantes;
         if (d.mensagem) {
-          bolha("assistant", d.mensagem.texto, d.mensagem);
-          if (!d.mensagem.erro) falar(d.mensagem.texto);
+          var nova = bolha("assistant", d.mensagem.texto, d.mensagem);
+          if (!d.mensagem.erro) {
+            botaoOuvir(nova);
+            var ler = form.querySelector("[data-ler]");
+            if (ler && ler.checked) falar(d.mensagem.texto);
+          }
           if (d.conversa_id && String(d.conversa_id) !== String(conversaId)) {
             conversaId = d.conversa_id;
             history.replaceState(null, "", d.url);
@@ -106,6 +132,10 @@
       try { rec.start(); ouvindo = true; btnVoz.setAttribute("aria-pressed", "true"); btnVoz.classList.add("active"); } catch (e) { /* já ativo */ }
     });
   }
-  if (window.speechSynthesis) form.querySelector("[data-ler-wrap]").hidden = false;
+  if (sintese) {
+    form.querySelector("[data-ler-wrap]").hidden = false;
+    lista.querySelectorAll(".ia-msg.assistant:not(.erro)").forEach(botaoOuvir);
+    if (btnParar) btnParar.addEventListener("click", function () { sintese.cancel(); btnParar.hidden = true; });
+  }
   lista.scrollTop = lista.scrollHeight;
 })();

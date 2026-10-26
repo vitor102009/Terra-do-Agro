@@ -21,7 +21,7 @@ from app.utils.validacao import Form
 bp = Blueprint("main", __name__)
 
 # Versão dos arquivos estáticos usada no cache do Service Worker. Altere ao publicar mudanças no frontend.
-ASSET_VERSION = "2026.10.22-2"
+ASSET_VERSION = "2026.10.26-1"
 
 ARQUIVOS_OFFLINE = [
     "/offline",

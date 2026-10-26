@@ -22,6 +22,8 @@ pytestmark = pytest.mark.skipif(not (os.environ.get("ANTHROPIC_API_KEY") and os.
 def test_chamada_real_usa_a_cotacao_do_sistema(app, client, produtor):
     app.config["ANTHROPIC_API_KEY"] = os.environ["ANTHROPIC_API_KEY"]
     ia_agro._cliente = None
+    st = ia_agro.status(forcar=True)
+    assert st["estado"] == "ok", st["motivo"]  # chamada autenticada real (sem custo de tokens)
     db.session.add(Cotacao(produto="Boi gordo", praca="Praça de teste", uf="SP", valor=Decimal("123.45"), unidade="R$/@",
                            fonte="Fonte fictícia de teste", data_referencia=date.today()))
     db.session.commit()
@@ -30,3 +32,5 @@ def test_chamada_real_usa_a_cotacao_do_sistema(app, client, produtor):
     assert r.status_code == 200, corpo
     assert "cotacoes" in corpo["mensagem"]["ferramentas"]
     assert "123,45" in corpo["mensagem"]["texto"] or "123.45" in corpo["mensagem"]["texto"]
+    pagina = client.get(corpo["url"]).get_data(as_text=True)  # a resposta real aparece na interface
+    assert "indisponível" not in pagina and ("123,45" in pagina or "123.45" in pagina)

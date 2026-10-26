@@ -226,6 +226,7 @@ def test_ia_agro_responsiva_sem_chave(servidor, navegador):
     ctx, page = _entrar_celular(navegador, base)
     page.goto(base + "/ia/")
     assert page.evaluate("document.documentElement.scrollWidth") <= 360
-    assert page.is_visible("text=ANTHROPIC_API_KEY")
+    assert page.is_visible("text=A IA Agro ainda não está disponível neste servidor.")
+    assert not page.is_visible("text=ANTHROPIC_API_KEY")  # detalhe técnico só para administradores
     assert page.is_disabled("#ia-pergunta")
     ctx.close()

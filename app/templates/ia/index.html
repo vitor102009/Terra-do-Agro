@@ -5,8 +5,16 @@
   <a class="btn btn-outline-secondary" href="{{ url_for('ia.index') }}"><i class="bi bi-plus-lg" aria-hidden="true"></i>Nova conversa</a>
 {% endcall %}
 
-{% if not configurada %}
-<div class="alert alert-warning">A IA Agro ainda não está configurada neste servidor. O administrador precisa definir a variável <code>ANTHROPIC_API_KEY</code> no arquivo <code>.env</code> do servidor e reiniciar a aplicação.</div>
+{% if aviso %}
+<div class="alert {{ 'alert-warning' if bloqueada else 'alert-info' }}" role="status">
+  <strong>{{ aviso }}</strong>
+  {% if current_user.is_admin %}
+  {% if estado == 'sem_chave' %}
+  <p class="small mb-2 mt-2">Crie a chave em <a href="https://console.anthropic.com/" target="_blank" rel="noopener noreferrer">console.anthropic.com</a> (API Keys; a cobrança da API é separada da assinatura do Claude), coloque <code>ANTHROPIC_API_KEY=...</code> no arquivo <code>.env</code> da pasta do projeto no servidor e recarregue a aplicação. Nunca coloque a chave no código ou no Git.</p>
+  {% endif %}
+  <form method="post" action="{{ url_for('ia.verificar') }}" class="mt-2">{{ m.csrf() }}<button class="btn btn-sm btn-outline-secondary" type="submit">Verificar configuração agora</button></form>
+  {% endif %}
+</div>
 {% endif %}
 {% if outra_propriedade %}
 <div class="alert alert-info">Esta conversa é de outra propriedade. Para perguntar sobre a propriedade ativa, inicie uma nova conversa.</div>
@@ -39,14 +47,15 @@
       </div>
       <form class="ia-form" data-form>
         <label class="visually-hidden" for="ia-pergunta">Sua pergunta</label>
-        <textarea class="form-control" id="ia-pergunta" rows="2" maxlength="2000" placeholder="Pergunte sobre seu rebanho, finanças, estoque ou cotações…" {% if not configurada %}disabled{% endif %} required></textarea>
+        <textarea class="form-control" id="ia-pergunta" rows="2" maxlength="2000" placeholder="Pergunte sobre seu rebanho, finanças, estoque ou cotações…" {% if bloqueada %}disabled{% endif %} required></textarea>
         <div class="d-flex flex-wrap gap-2 mt-2 align-items-center">
-          <button class="btn btn-primary" type="submit" data-enviar {% if not configurada %}disabled{% endif %}><i class="bi bi-send" aria-hidden="true"></i>Enviar</button>
-          <button class="btn btn-outline-secondary" type="button" data-voz hidden {% if not configurada %}disabled{% endif %} aria-pressed="false"><i class="bi bi-mic" aria-hidden="true"></i>Falar</button>
+          <button class="btn btn-primary" type="submit" data-enviar {% if bloqueada %}disabled{% endif %}><i class="bi bi-send" aria-hidden="true"></i>Enviar</button>
+          <button class="btn btn-outline-secondary" type="button" data-voz hidden {% if bloqueada %}disabled{% endif %} aria-pressed="false"><i class="bi bi-mic" aria-hidden="true"></i>Falar</button>
           <div class="form-check form-switch mb-0" data-ler-wrap hidden>
             <input class="form-check-input" type="checkbox" id="ia-ler" data-ler><label class="form-check-label small" for="ia-ler">Ler respostas em voz alta</label>
           </div>
-          <small class="text-muted ms-auto">Limite: {{ limite_dia }} perguntas por dia.</small>
+          <button class="btn btn-outline-secondary btn-sm" type="button" data-parar hidden><i class="bi bi-stop-circle" aria-hidden="true"></i>Parar leitura</button>
+          <small class="text-muted ms-auto">Restam <span data-restantes>{{ restantes }}</span> de {{ limite_dia }} perguntas nas últimas 24 h.</small>
         </div>
         <small class="text-muted d-block mt-1" data-voz-aviso hidden>A entrada por voz usa o reconhecimento do próprio navegador, que pode enviar o áudio ao serviço do fabricante (por exemplo, Google no Chrome).</small>
       </form>
