@@ -160,8 +160,9 @@ Como funciona:
 **IA Agro** (`/ia`): chat em português com o modelo `claude-opus-5-5` (SDK oficial `anthropic`). A IA consulta, por
 ferramentas no servidor, somente a propriedade ativa e as permissões do usuário (financeiro só para quem tem
 permissão; anúncios só os próprios). Endereço, coordenadas, e-mail e telefone não são enviados ao provedor. Ela não
-publica anúncios, não envia mensagens e não faz pagamentos. Histórico por usuário; limites de 5 perguntas/minuto e 40/dia
-(ajustáveis). Sem `ANTHROPIC_API_KEY`, a tela mostra que a IA não está configurada. Voz: ditado e leitura em voz alta pelas
+publica anúncios, não envia mensagens e não faz pagamentos. Histórico por usuário; limites de 5 perguntas/minuto, 40/dia e 400 mil tokens/dia por usuário, resposta de até
+4096 tokens e no máximo 150 s por pergunta (tudo ajustável no `.env`). `flask --app app ia-verificar` valida a chave com
+uma chamada autenticada sem custo de tokens e sem exibir a chave. Sem `ANTHROPIC_API_KEY`, a tela mostra que a IA não está configurada. Voz: ditado e leitura em voz alta pelas
 APIs do próprio navegador, exibidos apenas quando o navegador oferece suporte. O teste com o provedor real é
 `RUN_REAL_AI=1 python -m pytest tests/test_ia_real.py` (gera custo).
 

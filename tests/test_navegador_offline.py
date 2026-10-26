@@ -230,3 +230,44 @@ def test_ia_agro_responsiva_sem_chave(servidor, navegador):
     assert not page.is_visible("text=ANTHROPIC_API_KEY")  # detalhe técnico só para administradores
     assert page.is_disabled("#ia-pergunta")
     ctx.close()
+
+
+def test_ia_agro_interface_completa_com_provedor_simulado(servidor, navegador, monkeypatch):
+    """Interface de ponta a ponta no navegador. O PROVEDOR É SIMULADO: valida a tela, não a Anthropic."""
+    from types import SimpleNamespace
+    from app.services import ia_agro
+
+    app, base = servidor
+    app.config["ANTHROPIC_API_KEY"] = "chave-ficticia-de-teste"
+    ia_agro._status.update(estado=None, em=None)
+    respostas = iter(["Você tem 1 animal ativo: OFF-77.", "Segunda conversa respondida."] * 2)
+
+    def criar(**_kw):
+        return SimpleNamespace(stop_reason="end_turn", content=[SimpleNamespace(type="text", text=next(respostas))],
+                               usage=SimpleNamespace(input_tokens=10, output_tokens=5))
+    fake = SimpleNamespace(beta=SimpleNamespace(messages=SimpleNamespace(create=criar)),
+                           models=SimpleNamespace(retrieve=lambda m: SimpleNamespace(id=m)))
+    fake.with_options = lambda **_k: fake
+    monkeypatch.setattr(ia_agro, "cliente", lambda: fake)
+    try:
+        for largura in (360, 1280):
+            ctx, page = _entrar_celular(navegador, base, largura)
+            page.goto(base + "/ia/")
+            assert not page.is_visible(".alert-warning")  # integração validada: sem aviso
+            restantes = int(page.inner_text("[data-restantes]"))
+            page.click("[data-sugestao] >> nth=0")
+            page.wait_for_selector(".ia-msg.assistant >> text=OFF-77")
+            assert int(page.inner_text("[data-restantes]")) == restantes - 1
+            assert "/ia/conversa/" in page.url
+            url_conversa = page.url
+            page.goto(base + "/ia/")  # nova conversa
+            page.fill("#ia-pergunta", "Outra pergunta")
+            page.click("[data-enviar]")
+            page.wait_for_selector("text=Segunda conversa respondida.")
+            assert page.url != url_conversa
+            page.goto(url_conversa)  # histórico recuperado do banco
+            assert page.is_visible(".ia-msg.user") and page.is_visible("text=OFF-77")
+            assert page.evaluate("document.documentElement.scrollWidth") <= largura
+            ctx.close()
+    finally:
+        ia_agro._status.update(estado=None, em=None)

@@ -433,6 +433,11 @@ def verificar_limites(user_id):
         raise LimiteExcedido("Muitas perguntas seguidas. Aguarde um minuto e tente novamente.")
     if base.filter(MensagemIA.created_at >= agora - timedelta(days=1)).count() >= cfg["AI_DAILY_LIMIT"]:
         raise LimiteExcedido(f"Limite diário de {cfg['AI_DAILY_LIMIT']} perguntas atingido. Tente novamente amanhã.")
+    tokens = (db.session.query(db.func.coalesce(db.func.sum(MensagemIA.tokens_entrada + MensagemIA.tokens_saida), 0))
+              .join(ConversaIA).filter(ConversaIA.user_id == user_id, MensagemIA.papel == "assistant",
+                                       MensagemIA.created_at >= agora - timedelta(days=1)).scalar())
+    if tokens >= cfg["AI_DAILY_TOKEN_LIMIT"]:
+        raise LimiteExcedido("Limite diário de uso da IA atingido (controle de custos). Tente novamente amanhã.")
 
 
 _cliente = None
@@ -445,7 +450,7 @@ def cliente():
         import anthropic
 
         cfg = current_app.config
-        _cliente = anthropic.Anthropic(api_key=cfg["ANTHROPIC_API_KEY"], timeout=cfg["AI_TIMEOUT_SECONDS"], max_retries=2)
+        _cliente = anthropic.Anthropic(api_key=cfg["ANTHROPIC_API_KEY"], timeout=cfg["AI_TIMEOUT_SECONDS"], max_retries=1)
     return _cliente
 
 
@@ -457,13 +462,13 @@ def _contexto_texto(ctx):
             f"Acesso ao financeiro: {'sim' if 'financeiro' in ctx.perms else 'não'}.")
 
 
-def _chamar(msgs):
+def _chamar(msgs, timeout=None):
     import anthropic
 
     cfg = current_app.config
     try:
-        return cliente().beta.messages.create(
-            model=cfg["AI_MODEL"], max_tokens=16000, system=[{"type": "text", "text": SYSTEM, "cache_control": {"type": "ephemeral"}}],
+        return cliente().with_options(timeout=timeout or cfg["AI_TIMEOUT_SECONDS"]).beta.messages.create(
+            model=cfg["AI_MODEL"], max_tokens=cfg["AI_MAX_TOKENS"], system=[{"type": "text", "text": SYSTEM, "cache_control": {"type": "ephemeral"}}],
             tools=TOOLS, messages=msgs, output_config={"effort": cfg["AI_EFFORT"]},
             betas=["server-side-fallback-2026-07-01"], fallbacks="default",
         )
@@ -507,13 +512,19 @@ def responder(conversa, pergunta, ctx, pergunta_id=None):
     O histórico vai como texto (append-only); falhas e a própria pergunta atual (`pergunta_id`) ficam de fora.
     """
     historico = [m for m in conversa.mensagens if not m.erro and m.id != pergunta_id][-20:]
+    while historico and historico[0].papel != "user":  # a API exige que a conversa comece pelo usuário
+        historico.pop(0)
     msgs = [{"role": m.papel, "content": m.conteudo} for m in historico]
     msgs.append({"role": "user", "content": pergunta})
     msgs.append({"role": "system", "content": _contexto_texto(ctx)})
     usadas, uso = [], {"entrada": 0, "saida": 0}
-    inicio = time.monotonic()
-    for _ in range(current_app.config["AI_MAX_TOOL_ROUNDS"] + 1):
-        resp = _chamar(msgs)
+    cfg = current_app.config
+    prazo = time.monotonic() + cfg["AI_TOTAL_SECONDS"]
+    for _ in range(cfg["AI_MAX_TOOL_ROUNDS"] + 1):
+        restante = prazo - time.monotonic()
+        if restante < 10:
+            raise IAIndisponivel("A IA Agro demorou demais para responder. Tente uma pergunta mais específica.")
+        resp = _chamar(msgs, timeout=min(cfg["AI_TIMEOUT_SECONDS"], restante))
         uso["entrada"] += getattr(resp.usage, "input_tokens", 0) or 0
         uso["saida"] += getattr(resp.usage, "output_tokens", 0) or 0
         if resp.stop_reason == "refusal":
@@ -533,6 +544,4 @@ def responder(conversa, pergunta, ctx, pergunta_id=None):
             resultados.append({"type": "tool_result", "tool_use_id": b.id, "is_error": erro,
                                "content": json.dumps(saida, ensure_ascii=False, default=str)})
         msgs.append({"role": "user", "content": resultados})
-        if time.monotonic() - inicio > current_app.config["AI_TIMEOUT_SECONDS"] * 2:
-            break
     raise IAIndisponivel("A pergunta exigiu consultas demais. Tente uma pergunta mais específica.")

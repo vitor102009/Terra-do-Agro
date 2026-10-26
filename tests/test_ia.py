@@ -1,6 +1,6 @@
 """IA Agro com provedor SIMULADO (nenhuma chamada real). Testes reais ficam em tests/test_ia_real.py."""
 import json
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from types import SimpleNamespace
 
@@ -318,3 +318,83 @@ def test_custos_e_estoque_respeitam_permissao_financeira(app, client, ia):
     custos = resultados_de_ferramenta(fake.requisicoes[2])[0]
     assert estoque["movimentacoes_recentes"][0]["insumo"] == "Ração" and "custo_total" not in estoque["movimentacoes_recentes"][0]
     assert "permissão" in custos["erro"]
+
+
+def test_historico_longo_sempre_comeca_pelo_usuario(app, client, produtor, ia):
+    u, prop = produtor
+    conv = ConversaIA(user_id=u.id, propriedade_id=prop.id, titulo="Longa")
+    db.session.add(conv)
+    db.session.flush()
+    for i in range(21):  # u, a, u, ..., u  → os últimos 20 começariam por "assistant"
+        db.session.add(MensagemIA(conversa_id=conv.id, papel="user" if i % 2 == 0 else "assistant", conteudo=f"m{i}",
+                                  created_at=datetime(2026, 1, 1, 10, i)))  # histórico antigo
+    db.session.commit()
+    fake = ia([texto("ok")])
+    assert perguntar(client, "Mais uma", conversa_id=conv.id).status_code == 200
+    papeis = [m["role"] for m in fake.requisicoes[0]["messages"]]
+    assert papeis[0] == "user" and papeis[-2:] == ["user", "system"]
+
+
+def test_prazo_total_esgotado_nao_chama_provedor(app, client, produtor, ia):
+    app.config["AI_TOTAL_SECONDS"] = 5
+    fake = ia([texto("nunca")])
+    r = perguntar(client, "Oi")
+    assert r.status_code == 502 and "demorou demais" in r.get_json()["mensagem"]["texto"]
+    assert fake.requisicoes == []
+
+
+def test_limite_diario_de_tokens(app, client, produtor, ia):
+    u, prop = produtor
+    conv = ConversaIA(user_id=u.id, propriedade_id=prop.id)
+    db.session.add(conv)
+    db.session.flush()
+    db.session.add(MensagemIA(conversa_id=conv.id, papel="assistant", conteudo="x", tokens_entrada=390000, tokens_saida=10000))
+    db.session.commit()
+    ia([texto("nunca")])
+    r = perguntar(client, "Oi")
+    assert r.status_code == 429 and "controle de custos" in r.get_json()["erro"]
+
+
+def test_dados_reais_de_pesagem_sanidade_e_reproducao(app, client, produtor, ia):
+    from app.models import EventoReprodutivo, EventoSanitario, Pesagem
+    _, prop = produtor
+    a = _animal(prop, "V10", Decimal("420"))
+    a.sexo, a.situacao_reprodutiva = "F", "gestante"
+    hoje = date.today()
+    from datetime import timedelta
+    db.session.add_all([
+        Pesagem(propriedade_id=prop.id, animal_id=a.id, data=hoje - timedelta(days=30), peso_kg=Decimal("390")),
+        Pesagem(propriedade_id=prop.id, animal_id=a.id, data=hoje, peso_kg=Decimal("420")),
+        EventoSanitario(propriedade_id=prop.id, animal_id=a.id, tipo="vacina", produto="Brucelose",
+                        data_aplicacao=hoje - timedelta(days=200), proxima_data=hoje - timedelta(days=1)),
+        EventoReprodutivo(propriedade_id=prop.id, animal_id=a.id, tipo="diagnostico", data=hoje - timedelta(days=100),
+                          diagnostico_resultado="positivo", previsao_parto=hoje + timedelta(days=150)),
+    ])
+    db.session.commit()
+    fake = ia([ferramenta("pesagens_animal", {"brinco": "V10"}, "a"), ferramenta("sanidade", {"dias": 30}, "b"),
+               ferramenta("reproducao", {}, "c"), texto("ok")])
+    perguntar(client, "Como está a V10?")
+    pes, san, rep = (resultados_de_ferramenta(fake.requisicoes[i])[0] for i in (1, 2, 3))
+    assert pes["gmd"] == {"kg_dia": 1.0, "dias": 30, "ganho_kg": 30.0}
+    assert san["vencidas"][0]["produto"] == "Brucelose" and san["vencidas"][0]["alvo"] == "animal V10"
+    assert rep["resumo_femeas_ativas"]["gestantes"] == 1 and rep["proximos_partos_previstos"][0]["brinco"] == "V10"
+
+
+def test_propriedade_sem_dados_nao_inventa_valores(app, client, produtor, ia):
+    fake = ia([ferramenta("financeiro", {"periodo": "mes"}, "a"), ferramenta("sanidade", {"dias": 30}, "b"),
+               ferramenta("reproducao", {}, "c"), ferramenta("listar_animais", {"lote": None, "categoria": None,
+                                                                                "status": "ativo", "limite": 10}, "d"),
+               texto("Ainda não há dados.")])
+    perguntar(client, "Resumo geral")
+    fin, san, rep, ani = (resultados_de_ferramenta(fake.requisicoes[i])[0] for i in (1, 2, 3, 4))
+    assert fin["tem_lancamentos"] is False and fin["receitas_competencia"] == 0.0
+    assert san["vencidas"] == [] and rep["resumo_femeas_ativas"]["taxa_prenhez"] is None
+    assert ani["total_encontrado"] == 0
+
+
+def test_usuario_sem_propriedade_recebe_orientacao(app, client, ia):
+    criar_usuario(email="semfazenda@teste.com")
+    login(client, "semfazenda@teste.com")
+    fake = ia([ferramenta("resumo_propriedade", {}), texto("Cadastre uma propriedade.")])
+    assert perguntar(client, "Resumo").status_code == 200
+    assert "Nenhuma propriedade ativa" in resultados_de_ferramenta(fake.requisicoes[1])[0]["erro"]

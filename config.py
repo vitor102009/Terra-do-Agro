@@ -80,7 +80,10 @@ class Config:
     ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
     AI_MODEL = os.environ.get("AI_MODEL", "claude-opus-5-5")
     AI_EFFORT = os.environ.get("AI_EFFORT", "medium")
-    AI_TIMEOUT_SECONDS = float(os.environ.get("AI_TIMEOUT_SECONDS", "60") or 60)
+    AI_TIMEOUT_SECONDS = float(os.environ.get("AI_TIMEOUT_SECONDS", "60") or 60)  # por chamada ao provedor
+    AI_TOTAL_SECONDS = float(os.environ.get("AI_TOTAL_SECONDS", "150") or 150)  # pergunta inteira, com consultas
+    AI_MAX_TOKENS = int(os.environ.get("AI_MAX_TOKENS", "4096") or 4096)  # tamanho máximo de cada resposta
+    AI_DAILY_TOKEN_LIMIT = int(os.environ.get("AI_DAILY_TOKEN_LIMIT", "400000") or 400000)  # por usuário, 24 h
     AI_DAILY_LIMIT = int(os.environ.get("AI_DAILY_LIMIT", "40") or 40)  # perguntas por usuário por dia
     AI_MINUTE_LIMIT = int(os.environ.get("AI_MINUTE_LIMIT", "5") or 5)  # perguntas por usuário por minuto
     AI_MAX_TOOL_ROUNDS = 6
